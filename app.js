@@ -85,7 +85,7 @@
 
   const IS_MOBILE = window.matchMedia('(max-width: 760px)').matches;
   const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const MAX_DPR = IS_MOBILE ? 1.5 : 1.75;
+  const MAX_DPR = IS_MOBILE ? 1.7 : 2.0;
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_DPR));
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -4331,21 +4331,21 @@
   // Petals that drift down through the cube, looping forever.
   const petalSprites = [];
   (function addPetalFall() {
-    const count = IS_MOBILE ? 16 : 28;
+    const count = IS_MOBILE ? 10 : 16;
     const palette = [0xf4d0c7, 0xf6e5d4, 0xe9b4bf, 0xfff1dc];
     for (let i = 0; i < count; i++) {
       const mat = new THREE.SpriteMaterial({
         map: petalTex,
         color: palette[i % palette.length],
         transparent: true,
-        opacity: 0.58,
+        opacity: 0.42,
         depthWrite: false,
         depthTest: true,
         blending: THREE.NormalBlending
       });
       const s = new THREE.Sprite(mat);
       s.position.set(randRange(-4.1, 4.1), randRange(1.0, 8.2), randRange(-4.1, 4.1));
-      s.scale.setScalar(randRange(0.06, 0.13));
+      s.scale.setScalar(randRange(0.055, 0.11));
       s.material.rotation = rand() * TAU;
       s.renderOrder = 13;
       s.userData = {
@@ -4523,7 +4523,7 @@
           texture2D(tScene, uv + vec2(0.0, px.y)).rgb +
           texture2D(tScene, uv - vec2(0.0, px.y)).rgb
         ) * 0.25;
-        sharp += (sharp - localAvg) * 0.12;
+        sharp += (sharp - localAvg) * 0.16;
 
         // macro / tilt-shift band of focus, with a soft falloff
         float band = smoothstep(0.05, 0.42, abs(uv.y - 0.425));
@@ -4556,11 +4556,6 @@
         color = mix(color, color * color * (3.0 - 2.0 * color), 0.16);
         float postLuma = dot(color, vec3(0.299, 0.587, 0.114));
         color = mix(vec3(postLuma), color, 1.15);
-
-        // film grain + tiny blue-noise dither
-        float grain = hash(uv * uResolution + fract(uTime) * 311.7) - 0.5;
-        color += grain * (0.021 + 0.022 * (1.0 - smoothstep(0.0, 0.65, luma)));
-        color += (hash(uv * uResolution * 1.73) - 0.5) / 255.0;
 
         gl_FragColor = vec4(color, 1.0);
       }
@@ -5279,7 +5274,7 @@
     updateCamera(dt, elapsed);
     updateWaterAndClouds(dt);
     const zoomIn = clamp((cam.fitRadius - cam.radius) / Math.max(1, cam.fitRadius), 0, 0.35);
-    finalMat.uniforms.uBlurAmount.value = lerp(0.92, 0.44, smoothstep(0, 0.22, zoomIn));
+    finalMat.uniforms.uBlurAmount.value = lerp(0.92, 0.16, smoothstep(0, 0.22, zoomIn));
     uiAccum += dt;
     if (uiAccum > 0.14) {
       updateTimeUI(false);
