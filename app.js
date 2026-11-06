@@ -7,23 +7,25 @@
 
   await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 40)));
 
-  // Public delivery: read the large GLBs in small same-origin ranges. This avoids
-  // single-connection stalls and lets us retry a chunk without failing the model.
+  // Public delivery: stream large GLBs as small same-origin ranges and retry each
+  // chunk independently. A single stalled connection can no longer lose a model.
   async function loadTripoAssetRanged(loader, url, onLoad, onError) {
     const CHUNK = 512 * 1024;
     try {
-      const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-      const total = Number(head.headers.get('content-length')) || 0;
-      if (!total) throw new Error('no content-length');
-      const bytes = new Uint8Array(total);
+      let total = 0;
       let offset = 0;
-      while (offset < total) {
-        const end = Math.min(total - 1, offset + CHUNK - 1);
+      let bytes = null;
+      while (total === 0 || offset < total) {
+        const end = offset + CHUNK - 1;
         let part = null;
+        let rangeTotal = 0;
         for (let attempt = 0; attempt < 4 && !part; attempt++) {
           try {
             const res = await fetch(url, { cache: 'no-store', headers: { Range: `bytes=${offset}-${end}` } });
             if (res.status !== 206) throw new Error('range status ' + res.status);
+            const cr = res.headers.get('content-range') || '';
+            const match = cr.match(/\/(\d+)$/);
+            if (match) rangeTotal = Number(match[1]);
             const arr = new Uint8Array(await res.arrayBuffer());
             if (!arr.length) throw new Error('empty chunk');
             part = arr;
@@ -32,9 +34,17 @@
           }
         }
         if (!part) throw new Error('chunk failed at ' + offset);
+        if (!rangeTotal) throw new Error('missing content-range');
+        if (!total) {
+          total = rangeTotal;
+          bytes = new Uint8Array(total);
+        } else if (rangeTotal !== total) {
+          throw new Error('range total changed');
+        }
         bytes.set(part, offset);
         offset += part.length;
       }
+      if (!bytes || offset !== total) throw new Error('incomplete body');
       loader.parse(bytes.buffer, '', onLoad, onError);
     } catch (err) {
       console.warn('[Mistvale] ranged load fallback', url, err);
@@ -2544,7 +2554,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loadTripoAssetRanged(loader, 'assets/tripo/clay_tree_v1/resized.glb', onLoad, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/clay_tree_v1/tree_meshopt.glb', onLoad, onError);
     }
   })();
 
@@ -2600,7 +2610,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loadTripoAssetRanged(loader, 'assets/tripo/conifer_v1/resized.glb', onLoad, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/conifer_v1/model_meshopt.glb', onLoad, onError);
     }
   })();
 
@@ -2666,7 +2676,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loadTripoAssetRanged(loader, 'assets/tripo/rock_v1/resized.glb', onLoad, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/rock_v1/model_meshopt.glb', onLoad, onError);
     }
   })();
 
@@ -2717,7 +2727,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loadTripoAssetRanged(loader, 'assets/tripo/autumn_v1/optimized.glb', onLoad, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/autumn_v1/raw.glb', onLoad, onError);
     }
   })();
 
@@ -2775,7 +2785,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loadTripoAssetRanged(loader, 'assets/tripo/deer_v1/optimized.glb', onLoad, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/deer_v1/raw.glb', onLoad, onError);
     }
   })();
 
@@ -2826,7 +2836,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loadTripoAssetRanged(loader, 'assets/tripo/crag_v1/optimized.glb', onLoad, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/crag_v1/raw.glb', onLoad, onError);
     }
   })();
 
@@ -3231,7 +3241,8 @@
       matrices.push(tempM.clone());
       colors.push(new THREE.Color().setRGB(randRange(0.72, 1.02), randRange(0.72, 1.0), randRange(0.7, 0.98)));
     }
-    details.add(makeInstanced(rockGeo, rockMat, matrices, colors, true));
+    // Coarse scatter rocks are intentionally omitted; the sculpted crags,
+    // shoreline pebbles and generated boulder clusters carry the rock detail.
 
     // a scatter of small pebbles for the shoreline and mountain foot
     const pebMatrices = [], pebColors = [];
