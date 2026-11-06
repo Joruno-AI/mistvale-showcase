@@ -1544,6 +1544,60 @@
     capR.renderOrder = 7;
     terrainGroup.add(capR);
 
+    // Snow banks framing the upper fall so the sheet is seated in the glacier.
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 5; i++) {
+        const t = i / 4;
+        const y = topY - t * 0.62;
+        const z = topZ + t * 0.22 + 0.10;
+        const x = topX + side * (0.19 + t * 0.26);
+        const bank = new THREE.Mesh(lipGeo, snowLipMat);
+        bank.position.set(x, y, z);
+        bank.scale.set(0.10 + t * 0.025, 0.15 + t * 0.01, 0.10);
+        bank.renderOrder = 6;
+        terrainGroup.add(bank);
+      }
+    }
+
+    // Snowy frame strips that seat the fall into the glacier at close range.
+    const bankMat = new THREE.MeshStandardMaterial({
+      color: 0xc7dde4, roughness: 0.86, metalness: 0,
+      envMapIntensity: 0.3, depthTest: false, depthWrite: false,
+      side: THREE.DoubleSide, toneMapped: true
+    });
+    const bankSteps = 24;
+    const bottomZ = LAKE.z - LAKE.rz * 0.73;
+    for (const side of [-1, 1]) {
+      const positions = [], indices = [];
+      for (let i = 0; i < bankSteps; i++) {
+        const t = i / (bankSteps - 1);
+        const ease = t * t * (3 - 2 * t);
+        const y = lerp(topY, LAKE_LEVEL + 0.02, ease);
+        const z = lerp(topZ, bottomZ, ease) + 0.028;
+        const cx = topX + Math.sin(t * Math.PI) * 0.035 + t * 0.02;
+        const w = 0.29 * (0.66 + t * 0.84) * (0.94 + 0.06 * Math.sin(t * 19.0));
+        const inner = cx + side * (w + 0.01);
+        const outer = cx + side * (w + 0.13);
+        positions.push(inner, y, z, outer, y + 0.012, z);
+      }
+      for (let i = 0; i < bankSteps - 1; i++) {
+        const a = i * 2;
+        indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, bankMat);
+      mesh.renderOrder = 8;
+      terrainGroup.add(mesh);
+    }
+    const crown = new THREE.Mesh(lipGeo, bankMat);
+    crown.position.set(topX, topY + 0.04, topZ + 0.22);
+    crown.scale.set(0.42, 0.075, 0.18);
+    crown.renderOrder = 8;
+    terrainGroup.add(crown);
+
     // A short ribbon of water on the glacier feeding the lip.
     const src = [];
     for (let i = 0; i < 10; i++) {
@@ -2322,7 +2376,7 @@
         if (z > 0.55 && x > -1.55 && x < 2.25) continue;
         if (z > 2.05 && x < 2.65) continue;
         if (!canPlace(x, z, {
-          edge: 0.89,
+          edge: 0.82,
           lake: isConifer ? 1.2 : 1.65,
           river: 0.55,
           slope: isConifer ? 1.38 : 1.08,
@@ -3752,6 +3806,23 @@
     wrapper.position.y = targetHeight * 0.5;
     return { wrapper, size, center };
   }
+
+  function fitRiggedCentered(scene, targetSpan) {
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    scene.traverse(o => {
+      if (!o.isMesh || !o.geometry) return;
+      o.geometry.computeBoundingBox();
+      if (o.geometry.boundingBox) box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+    });
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    scene.position.sub(center);
+    const wrapper = new THREE.Group();
+    wrapper.add(scene);
+    wrapper.scale.setScalar(targetSpan / Math.max(0.001, Math.max(size.x, size.z)));
+    return wrapper;
+  }
   function fitReadyTemplate(scene, targetSize, axis = 'y') {
     scene.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(scene);
@@ -4040,12 +4111,12 @@
 
     for (let i = 0; i < 4; i++) {
       loadReadyModel('assets/ready/koi.glb', '__KOI_B64__', gltf => {
-        const template = fitReadyTemplate(gltf.scene, 0.38, 'length');
+        const template = fitRiggedCentered(gltf.scene, 0.42);
         const fish = new THREE.Group();
         fish.add(template);
         const cx = LAKE.x - .34 + i * .22;
         const cz = LAKE.z - .34 + (i % 2) * .18;
-        fish.position.set(cx, LAKE_LEVEL + 0.012, cz);
+        fish.position.set(cx, LAKE_LEVEL + 0.085, cz);
         fish.name = 'ready-koi';
         fish.userData = {
           phase: rand() * TAU,
@@ -5282,7 +5353,7 @@
       fish.position.x = u.cx + Math.cos(a) * u.radiusX;
       fish.position.z = u.cz + Math.sin(a) * u.radiusZ;
       fish.rotation.y = -a + Math.PI * 0.5;
-      fish.position.y = LAKE_LEVEL + 0.012 + Math.sin(a * 2.1) * 0.006;
+      fish.position.y = LAKE_LEVEL + 0.085 + Math.sin(a * 2.1) * 0.006;
       if (u.mixer) u.mixer.update(dt);
       if (u.ripple) {
         u.ripple.position.x = fish.position.x;
