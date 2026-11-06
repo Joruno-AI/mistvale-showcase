@@ -35,10 +35,7 @@
         bytes.set(part, offset);
         offset += part.length;
       }
-      loader.parse(bytes.buffer, '', (gltf) => {
-        console.info('[MISTVALE_RANGE_OK]', url.split('/').slice(-2)[0]);
-        onLoad(gltf);
-      }, onError);
+      loader.parse(bytes.buffer, '', onLoad, onError);
     } catch (err) {
       console.warn('[Mistvale] ranged load fallback', url, err);
       loader.load(url, onLoad, undefined, onError);
