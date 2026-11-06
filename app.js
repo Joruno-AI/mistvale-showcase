@@ -2734,8 +2734,10 @@
       holder.position.set(x, heightAt(x, z) + 0.006, z);
       holder.rotation.y = yaw;
       holder.name = 'ready-deer';
+      holder.userData = { baseY: holder.position.y, baseYaw: yaw, phase: rand() * TAU };
       addAnimalShadow(holder, targetHeight * 0.36, 0.22);
       life.add(holder);
+      readyDeerIdle.push(holder);
     };
     if (tripoDeerTemplate) place();
     else tripoDeerWaiters.push(place);
@@ -3688,6 +3690,9 @@
   }
 
 
+  const readyRabbits = [];
+  const readySparrows = [];
+  const readyDeerIdle = [];
   const readyLoader = new THREE.GLTFLoader();
   if (window.MeshoptDecoder) readyLoader.setMeshoptDecoder(window.MeshoptDecoder);
   function loadReadyModel(url, base64Key, onLoad) {
@@ -3914,6 +3919,7 @@
         holder.userData = { baseY: holder.position.y, phase: rand() * TAU };
         addAnimalShadow(holder, 0.17, 0.24);
         life.add(holder);
+        readyRabbits.push(holder);
       }
     });
   }
@@ -3935,9 +3941,10 @@
         holder.position.set(x, heightAt(x, z) + 0.008, z);
         holder.rotation.y = yaw;
         holder.name = 'ready-sparrow';
-        holder.userData = { phase: rand() * TAU };
+        holder.userData = { baseY: holder.position.y, phase: rand() * TAU };
         addAnimalShadow(holder, 0.075, 0.2);
         life.add(holder);
+        readySparrows.push(holder);
       }
     });
   }
@@ -3969,18 +3976,17 @@
   const birdGroup = new THREE.Group();
   life.add(birdGroup);
   const birds = [];
-  (function addGulls() {
-    loadReadyModel('assets/ready/gull.glb', '__GULL_B64__', gltf => {
-      const template = fitReadyTemplate(gltf.scene, 0.42, 'length');
-      for (let i = 0; i < 7; i++) {
+
+  (function addStorks() {
+    for (let i = 0; i < 7; i++) {
+      loadReadyModel('assets/ready/stork.glb', '__STORK_B64__', gltf => {
+        const template = fitReadyTemplate(gltf.scene, 0.48, 'length');
         const holder = new THREE.Group();
-        const gull = template.clone(true);
-        gull.scale.multiplyScalar(randRange(0.82, 1.18));
-        gull.rotation.y = randRange(-0.15, 0.15);
-        holder.add(gull);
-        holder.name = 'ready-gull';
+        template.scale.multiplyScalar(randRange(0.82, 1.12));
+        holder.add(template);
+        holder.name = 'ready-stork';
         birdGroup.add(holder);
-        birds.push({
+        const bird = {
           mesh: holder,
           radius: randRange(1.15, 2.7),
           height: randRange(4.5, 6.4),
@@ -3988,10 +3994,20 @@
           phase: rand() * TAU,
           centerX: randRange(-.7, .4),
           centerZ: randRange(-1.2, .4),
-          wingSpeed: 0
-        });
-      }
-    });
+          mixer: null
+        };
+        if (gltf.animations && gltf.animations.length) {
+          const clip = gltf.animations.find(c => /fly|flap|wing/i.test(c.name)) || gltf.animations[0];
+          const mixer = new THREE.AnimationMixer(gltf.scene);
+          const action = mixer.clipAction(clip);
+          action.setLoop(THREE.LoopRepeat);
+          action.play();
+          action.time = randRange(0, clip.duration);
+          bird.mixer = mixer;
+        }
+        birds.push(bird);
+      });
+    }
   })();
 
   // lily pads and koi
@@ -5208,6 +5224,25 @@
       }
     }
 
+    // Ready animals: small hops, breathing and pecking so the scene stays alive.
+    for (let i = 0; i < readyRabbits.length; i++) {
+      const r = readyRabbits[i];
+      const hop = Math.max(0, Math.sin(elapsed * 2.35 + r.userData.phase));
+      r.position.y = r.userData.baseY + Math.pow(hop, 1.7) * 0.045 + Math.sin(elapsed * 1.15 + r.userData.phase) * 0.003;
+      r.rotation.z = Math.sin(elapsed * 2.35 + r.userData.phase) * 0.045;
+    }
+    for (let i = 0; i < readySparrows.length; i++) {
+      const b = readySparrows[i];
+      const peck = Math.max(0, Math.sin(elapsed * 4.4 + b.userData.phase));
+      b.position.y = b.userData.baseY + Math.pow(peck, 2.0) * 0.016;
+      b.rotation.x = Math.sin(elapsed * 4.4 + b.userData.phase) * 0.09;
+    }
+    for (let i = 0; i < readyDeerIdle.length; i++) {
+      const d = readyDeerIdle[i];
+      d.scale.y = 1 + Math.sin(elapsed * 0.9 + d.userData.phase) * 0.004;
+      d.rotation.y = d.userData.baseYaw + Math.sin(elapsed * 0.36 + d.userData.phase) * 0.014;
+    }
+
     // Birds circle the mountain with visible wingbeats.
     for (let i = 0; i < birds.length; i++) {
       const bird = birds[i];
@@ -5218,14 +5253,10 @@
       bird.mesh.position.set(x, y, z);
       const vx = -Math.sin(angle) * bird.radius * Math.sign(bird.speed);
       const vz = Math.cos(angle) * bird.radius * Math.sign(bird.speed);
-      bird.mesh.rotation.y = angleLerp(bird.mesh.rotation.y, Math.atan2(-vz, vx), 4.0, dt);
-      bird.mesh.rotation.z = Math.sin(angle * 2.0 + bird.phase) * 0.18;
-      bird.mesh.rotation.x = Math.sin(angle * 3.0 + bird.phase) * 0.06;
-      if (bird.mesh.userData.wings) {
-        const flap = Math.sin(elapsed * bird.wingSpeed + bird.phase) * 0.92;
-        bird.mesh.userData.wings[0].rotation.x = flap;
-        bird.mesh.userData.wings[1].rotation.x = -flap;
-      }
+      bird.mesh.rotation.y = angleLerp(bird.mesh.rotation.y, Math.atan2(vx, vz), 4.0, dt);
+      bird.mesh.rotation.z = Math.sin(angle * 2.0 + bird.phase) * 0.12;
+      bird.mesh.rotation.x = Math.sin(angle * 3.0 + bird.phase) * 0.04;
+      if (bird.mixer) bird.mixer.update(dt);
     }
 
     // Koi: quicker, with a soft tail swish.
