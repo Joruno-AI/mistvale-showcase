@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#05070c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='%23e6cf9f' fill-opacity='.8'/%3E%3C/svg%3E">
+<title>MISTVALE · 雾岭微光</title>
+<style>
+  :root{
+    --ink: #f2eadc;
+    --ink-dim: rgba(238,232,220,.58);
+    --ink-faint: rgba(238,232,220,.32);
+    --line: rgba(238,232,220,.16);
+    --glass: rgba(12,18,22,.32);
+    --serif: "Didot", "Baskerville", "Iowan Old Style", "Songti SC", "STSong", Georgia, serif;
+    --sans: "Avenir Next", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#04060a}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    user-select:none;
+  }
+  #world{
+    position:fixed;inset:0;
+    width:100%;height:100%;
+    display:block;
+    outline:none;
+    cursor:grab;
+    touch-action:none;
+  }
+  #world.dragging{cursor:grabbing}
+
+  /* ---------- frame ---------- */
+  .vignette{
+    position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:
+      linear-gradient(180deg, rgba(3,5,9,.38) 0%, transparent 26%, transparent 72%, rgba(3,5,9,.5) 100%),
+      radial-gradient(130% 95% at 50% 46%, transparent 52%, rgba(2,4,7,.44) 100%);
+    mix-blend-mode:multiply;
+    opacity:.7;
+  }
+  .ui{position:fixed;inset:0;z-index:5;pointer-events:none}
+  .ui .interactive{pointer-events:auto}
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    position:absolute;
+    top:clamp(26px, 5.2vh, 58px);
+    left:clamp(24px, 5vw, 78px);
+    max-width:420px;
+    opacity:0;
+    transform:translateY(14px);
+    animation:reveal 1.6s cubic-bezier(.22,.8,.24,1) .55s forwards;
+  }
+  @keyframes reveal{to{opacity:1;transform:none}}
+  .eyebrow{
+    display:flex;align-items:center;gap:10px;
+    font-family:var(--mono);font-size:9.5px;font-weight:500;
+    letter-spacing:.22em;color:var(--ink-dim);text-transform:uppercase;
+  }
+  .eyebrow .pulse{
+    width:4px;height:4px;border-radius:50%;background:#e9c990;
+    box-shadow:0 0 10px 1px rgba(233,201,144,.8);
+    animation:breathe 4s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{opacity:.4}50%{opacity:1}}
+  .eyebrow .no{margin-left:4px;color:var(--ink-faint)}
+  .masthead h1{
+    font-family:var(--serif);
+    font-size:clamp(46px, 5.2vw, 76px);
+    font-weight:400;
+    letter-spacing:.015em;
+    line-height:.98;
+    margin:16px 0 0 -2px;
+    color:rgba(249,244,234,.95);
+    text-shadow:0 2px 40px rgba(0,0,0,.42);
+  }
+  .masthead h1 i{font-style:italic;font-weight:400;opacity:.9}
+  .cn-title{
+    margin-top:8px;
+    font-family:var(--serif);
+    font-size:14px;font-weight:400;
+    letter-spacing:.58em;
+    color:rgba(238,229,213,.72);
+  }
+  .masthead .desc{
+    margin-top:18px;
+    font-family:var(--serif);
+    font-size:12.5px;
+    letter-spacing:.16em;
+    line-height:1.9;
+    color:var(--ink-dim);
+  }
+  .hairline{
+    margin-top:22px;width:44px;height:1px;
+    background:linear-gradient(90deg, rgba(233,201,144,.7), rgba(233,201,144,0));
+  }
+
+  /* ---------- corner notes ---------- */
+  .view-hint{
+    position:absolute;top:clamp(33px, 5.7vh, 64px);right:clamp(24px, 4.8vw, 74px);
+    display:flex;align-items:center;gap:9px;
+    font-family:var(--mono);font-size:9px;letter-spacing:.16em;
+    color:var(--ink-faint);
+    opacity:0;animation:reveal 1.4s ease 1.2s forwards;
+  }
+  .mouse{
+    width:13px;height:18px;border:1px solid rgba(238,232,220,.34);
+    border-radius:8px;position:relative;
+  }
+  .mouse::after{
+    content:"";position:absolute;left:50%;top:4px;width:1px;height:3px;
+    background:rgba(238,232,220,.6);transform:translateX(-50%);
+    animation:wheel 2.4s ease-in-out infinite;
+  }
+  @keyframes wheel{0%,100%{transform:translate(-50%,0);opacity:.3}45%{transform:translate(-50%,5px);opacity:1}}
+  .field-notes{
+    position:absolute;left:clamp(24px, 5vw, 78px);bottom:clamp(26px,5.2vh,56px);
+    max-width:300px;
+    opacity:0;animation:reveal 1.6s ease 1.55s forwards;
+  }
+  .field-notes .quote{
+    font-family:var(--serif);font-size:12.5px;letter-spacing:.14em;
+    color:rgba(238,232,220,.49);line-height:1.9;
+  }
+  .field-notes .meta{
+    display:flex;align-items:center;gap:10px;margin-top:14px;
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.19em;
+    color:rgba(238,232,220,.28);text-transform:uppercase;
+  }
+  .field-notes .meta .dot{width:3px;height:3px;border-radius:50%;background:rgba(238,232,220,.25)}
+  .corner-readout{
+    position:absolute;right:clamp(24px, 4.8vw, 74px);bottom:clamp(26px,5.2vh,56px);
+    text-align:right;
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.17em;
+    line-height:2;color:rgba(238,232,220,.25);
+    opacity:0;animation:reveal 1.6s ease 1.8s forwards;
+  }
+  .corner-readout b{color:rgba(238,232,220,.46);font-weight:400}
+
+  /* ---------- time capsule ---------- */
+  .time-capsule{
+    position:absolute;left:50%;bottom:clamp(22px, 4.4vh, 44px);
+    transform:translateX(-50%) translateY(12px);
+    display:flex;align-items:center;gap:16px;
+    padding:10px 14px 10px 11px;
+    border:1px solid rgba(238,232,220,.13);
+    border-radius:999px;
+    background:linear-gradient(180deg, rgba(23,31,35,.48), rgba(8,12,15,.4));
+    backdrop-filter:blur(22px) saturate(1.3);
+    -webkit-backdrop-filter:blur(22px) saturate(1.3);
+    box-shadow:0 20px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.07);
+    opacity:0;
+    animation:riseCapsule 1.5s cubic-bezier(.22,.8,.24,1) 1.3s forwards;
+    transition:border-color .4s ease;
+  }
+  @keyframes riseCapsule{
+    from{opacity:0;transform:translate(-50%, 12px)}
+    to{opacity:1;transform:translate(-50%, 0)}
+  }
+  .time-capsule:hover{border-color:rgba(238,232,220,.23)}
+  .round-btn{
+    width:30px;height:30px;border-radius:50%;
+    border:1px solid rgba(238,232,220,.14);
+    background:rgba(238,232,220,.045);
+    color:rgba(244,237,224,.82);
+    display:grid;place-items:center;
+    cursor:pointer;flex:0 0 auto;
+    transition:background .3s ease, border-color .3s ease, transform .3s ease;
+  }
+  .round-btn:hover{background:rgba(238,232,220,.1);border-color:rgba(238,232,220,.26)}
+  .round-btn:active{transform:scale(.93)}
+  .round-btn svg{width:12px;height:12px;display:block}
+  .time-body{width:clamp(150px, 22vw, 228px);display:flex;flex-direction:column;gap:7px}
+  .time-top{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+  #clock{
+    font-family:var(--mono);font-size:11px;letter-spacing:.13em;color:rgba(245,239,228,.83);
+  }
+  #phaseLabel{
+    font-family:var(--sans);font-size:8.5px;letter-spacing:.2em;
+    color:rgba(238,232,220,.34);text-transform:uppercase;white-space:nowrap;
+  }
+  input[type="range"]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:16px;background:transparent;cursor:pointer;display:block;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height:1px;width:100%;
+    background:linear-gradient(90deg, rgba(238,232,220,.16), rgba(238,232,220,.37), rgba(238,232,220,.16));
+    border-radius:2px;
+  }
+  input[type="range"]::-moz-range-track{
+    height:1px;width:100%;
+    background:rgba(238,232,220,.28);
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:7px;height:7px;border-radius:50%;
+    margin-top:-3px;background:#f2e6ce;
+    box-shadow:0 0 0 4px rgba(242,230,206,.08), 0 0 15px rgba(242,230,206,.4);
+    transition:box-shadow .3s ease;
+  }
+  input[type="range"]:hover::-webkit-slider-thumb{box-shadow:0 0 0 5px rgba(242,230,206,.12), 0 0 22px rgba(242,230,206,.55)}
+  input[type="range"]::-moz-range-thumb{
+    width:7px;height:7px;border:0;border-radius:50%;background:#f2e6ce;
+    box-shadow:0 0 12px rgba(242,230,206,.4);
+  }
+
+  /* ---------- loader ---------- */
+  #loader{
+    position:fixed;inset:0;z-index:50;
+    background:#04060a;
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity 1.4s cubic-bezier(.4,0,.2,1), visibility 1.4s;
+  }
+  body.ready #loader{opacity:0;visibility:hidden}
+  .loader-inner{display:flex;flex-direction:column;align-items:center;gap:22px;transform:translateY(-2vh)}
+  .loader-mark{
+    font-family:var(--serif);font-size:28px;letter-spacing:.36em;
+    color:rgba(243,236,223,.82);padding-left:.36em;
+  }
+  .loader-line{
+    width:116px;height:1px;background:rgba(243,236,223,.1);overflow:hidden;position:relative;
+  }
+  .loader-line::after{
+    content:"";position:absolute;inset:0;background:linear-gradient(90deg, transparent, rgba(243,227,198,.75), transparent);
+    transform:translateX(-100%);animation:loading 1.8s ease-in-out infinite;
+  }
+  @keyframes loading{to{transform:translateX(100%)}}
+  .loader-sub{
+    font-family:var(--mono);font-size:8px;letter-spacing:.25em;
+    color:rgba(243,236,223,.3);text-transform:uppercase;
+  }
+  .fallback{
+    position:fixed;inset:0;display:none;place-items:center;z-index:60;
+    background:#05070b;padding:24px;text-align:center;
+    font-family:var(--serif);font-size:14px;line-height:2;letter-spacing:.12em;color:rgba(238,232,220,.6);
+  }
+
+  @media (max-width: 900px){
+    .masthead{max-width:320px}
+    .masthead h1{font-size:clamp(40px,10vw,58px)}
+    .field-notes,.corner-readout,.view-hint{display:none}
+    .cn-title{letter-spacing:.38em}
+    .masthead .desc{font-size:11px;letter-spacing:.12em}
+  }
+  @media (max-width: 560px){
+    .masthead{top:max(22px, env(safe-area-inset-top))}
+    .masthead h1{font-size:44px}
+    .masthead .desc{display:none}
+    .hairline{margin-top:15px}
+    .time-capsule{bottom:max(18px, env(safe-area-inset-bottom));gap:10px;padding:9px 12px 9px 9px;width:calc(100% - 32px);max-width:340px}
+    .time-body{flex:1;width:auto}
+    #phaseLabel{display:none}
+    .eyebrow{font-size:8px;letter-spacing:.18em}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important;animation-iteration-count:1 !important}
+  }
+</style>
+</head>
+<body>
+  <canvas id="world" aria-label="悬浮于深空玻璃立方体中的微缩生态世界"></canvas>
+  <div class="vignette"></div>
+
+  <div class="ui">
+    <header class="masthead">
+      <div class="eyebrow"><span class="pulse"></span> Aether Collection <span class="no">N° 07</span></div>
+      <h1>Mist<i>vale</i></h1>
+      <div class="cn-title">雾 岭 微 光</div>
+      <p class="desc">一方山谷，悬浮于深空的静默里。<br>雪线之下，雾与光正缓慢生长。</p>
+      <div class="hairline"></div>
+    </header>
+
+    <div class="view-hint"><span class="mouse"></span> 拖动环视 · 滚轮靠近</div>
+
+    <div class="field-notes">
+      <p class="quote">“ 这里的时间<br>是沿着雪水一起流下来的。 ”</p>
+      <div class="meta"><span>生物圈 · BIOSPHERE 07</span><span class="dot"></span><span>GLASS · MOSS · MIST</span></div>
+    </div>
+
+    <div class="corner-readout">
+      <div><b>34°12′ N</b> &nbsp;/&nbsp; 110°08′ E</div>
+      <div>ALT. 2,148 M &nbsp;—&nbsp; 14 SPECIES</div>
+    </div>
+
+    <div class="time-capsule interactive">
+      <button class="round-btn" id="playBtn" aria-label="暂停昼夜流转" title="播放 / 暂停（空格）">
+        <svg id="pauseIcon" viewBox="0 0 12 12" fill="none"><rect x="2.3" y="1.7" width="2.2" height="8.6" rx="0.7" fill="currentColor"/><rect x="7.5" y="1.7" width="2.2" height="8.6" rx="0.7" fill="currentColor"/></svg>
+        <svg id="playIcon" viewBox="0 0 12 12" fill="none" style="display:none"><path d="M3.2 1.8v8.4c0 .5.55.82 1 .58l6.6-4.2a.7.7 0 0 0 0-1.18L4.2 1.22a.7.7 0 0 0-1 .58Z" fill="currentColor"/></svg>
+      </button>
+      <div class="time-body">
+        <div class="time-top"><span id="clock">17:02</span><span id="phaseLabel">GOLDEN HOUR</span></div>
+        <input id="timeRange" type="range" min="0" max="1000" value="710" aria-label="昼夜时间">
+      </div>
+      <button class="round-btn" id="resetBtn" aria-label="重置视角" title="重置视角（R）">
+        <svg viewBox="0 0 14 14" fill="none"><path d="M11.6 5.2a5.05 5.05 0 1 0 .2 3.3M11.6 2.2v3.2H8.4" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="loader">
+    <div class="loader-inner">
+      <div class="loader-mark">MISTVALE</div>
+      <div class="loader-line"></div>
+      <div class="loader-sub">Condensing a small world</div>
+    </div>
+  </div>
+  <div class="fallback" id="fallback">
+    这个世界需要开启 WebGL 才能被看见。<br>请在支持 WebGL 的浏览器中打开。
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/meshopt_decoder.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
