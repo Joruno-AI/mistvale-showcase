@@ -91,7 +91,7 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = false;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.autoClear = false;
 
@@ -2125,7 +2125,11 @@
   // The old green tree at this spot becomes an autumn maple instead.
   const AUTUMN_TREE_SPOT = { x: 2.86, z: -0.26, s: 1.26, yaw: 4.15 };
   // A detailed doe grazes at the open right shore.
-  const DEER_SPOT = { x: 1.95, z: 2.95, height: 0.62, yaw: 2.55 };
+  const DEER_SPOT = { x: -0.78, z: 1.28, height: 0.72, yaw: 2.55 };
+  const DEER_CLEARING_R = 0.95;
+  function inDeerClearing(x, z) {
+    return Math.hypot(x - DEER_SPOT.x, z - DEER_SPOT.z) < DEER_CLEARING_R;
+  }
   // Detailed crags embedded into the snow mountain's shoulders.
   const CRAG_SPOTS = [
     { x: 1.55, z: -0.35, height: 1.18, yaw: 0.75 },
@@ -2861,6 +2865,7 @@
       const r = Math.sqrt(rand()) * 3.62;
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
+      if (inDeerClearing(x, z)) continue;
       if (lakeQ(x, z) < 1.02) continue;
       if (distToRiver(x, z) < 0.24) continue;
       if (slopeAt(x, z) > 1.08) continue;
@@ -2883,6 +2888,7 @@
       const r = randRange(0.9, 2.9);
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
+      if (inDeerClearing(x, z)) continue;
       if (!canPlace(x, z, { edge: 0.94, lake: 1.06, river: 0.28, slope: 1.0, minH: 0.45, maxH: 2.05 })) continue;
       const h = heightAt(x, z);
       const s = randRange(0.65, 1.4);
@@ -3010,6 +3016,7 @@
       const r = 0.7 + Math.sqrt(rand()) * 2.9;
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
+      if (inDeerClearing(x, z)) continue;
       if (!canPlace(x, z, { edge: 0.95, lake: 1.05, river: 0.3, slope: 1.0, minH: 0.45, maxH: 1.95 })) continue;
       if (rand() > 0.36) continue;
       const h = heightAt(x, z);
@@ -3115,6 +3122,7 @@
       const a = rand() * TAU;
       const r = 0.8 + Math.sqrt(rand()) * 2.75;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (inDeerClearing(x, z)) continue;
       if (!canPlace(x, z, { edge: 0.94, lake: 1.08, river: 0.28, slope: 1.15, minH: 0.4, maxH: 2.1 })) continue;
       if (rand() > 0.3) continue;
       const h = heightAt(x, z);
@@ -4119,6 +4127,7 @@
         x = p.x - tangent.z * off * side;
         z = p.z + tangent.x * off * side;
       }
+      if (inDeerClearing(x, z)) continue;
       h = heightAt(x, z);
       if (lakeQ(x, z) < 0.98) continue;
       if (h < 0.25 || h > 2.05) continue;
