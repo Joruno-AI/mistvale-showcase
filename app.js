@@ -2458,9 +2458,6 @@
     if (window.MeshoptDecoder) loader.setMeshoptDecoder(window.MeshoptDecoder);
 
     const onLoad = (gltf) => {
-      console.info('[MISTVALE_LOAD]', 'deer');
-      console.info('[MISTVALE_LOAD]', 'rock');
-      console.info('[MISTVALE_LOAD]', 'tree');
       const source = gltf.scene;
       source.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(source);
