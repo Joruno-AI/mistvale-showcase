@@ -3196,21 +3196,6 @@
       matrices.push(tempM.clone());
       colors.push(new THREE.Color().setRGB(randRange(0.72, 1.02), randRange(0.72, 1.0), randRange(0.7, 0.98)));
     }
-    // waterfall lip boulders
-    for (let i = 0; i < 9; i++) {
-      const a = rand() * TAU;
-      const rr = 0.18 + rand() * 0.38;
-      const x = RIVER_LEDGE.x + Math.cos(a) * rr;
-      const z = RIVER_LEDGE.z + Math.sin(a) * rr;
-      const h = heightAt(x, z);
-      const s = randRange(0.12, 0.32);
-      tempPos.set(x, h + s * 0.22, z);
-      tempQ.setFromEuler(new THREE.Euler(rand() * 3, rand() * TAU, rand() * 3));
-      tempScale.set(s, s * 0.72, s * 1.05);
-      tempM.compose(tempPos, tempQ, tempScale);
-      matrices.push(tempM.clone());
-      colors.push(new THREE.Color().setRGB(randRange(0.68, 0.96), randRange(0.68, 0.94), randRange(0.66, 0.92)));
-    }
     details.add(makeInstanced(rockGeo, rockMat, matrices, colors, true));
 
     // a scatter of small pebbles for the shoreline and mountain foot
