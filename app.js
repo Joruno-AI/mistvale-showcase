@@ -1243,7 +1243,8 @@
         col = mix(col, vec3(0.85, 0.94, 0.92), clamp(foam, 0.0, 0.8));
         col *= 0.7 + uDay * 0.36;
         col += uNight * vec3(0.0, 0.032, 0.06);
-        float alpha = (0.57 + fres * 0.16 + foam * 0.75) * edge;
+        float upstream = smoothstep(0.0, 0.20, flow);
+        float alpha = (0.57 + fres * 0.16 + foam * 0.75) * edge * upstream;
         gl_FragColor = vec4(col, alpha);
       }
     `,
@@ -1255,6 +1256,64 @@
   const riverMesh = new THREE.Mesh(makeRiverGeometry(), riverMat);
   riverMesh.renderOrder = 4;
   terrainGroup.add(riverMesh);
+
+  // An icy carved bed around the stream: it seats the water into the snow.
+  (function addRiverBed() {
+    const pts = riverCurveSmooth;
+    const positions = [], uvs = [], indices = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      const pPrev = pts[Math.max(0, i - 1)];
+      const pNext = pts[Math.min(pts.length - 1, i + 1)];
+      let tx = pNext.x - pPrev.x, tz = pNext.z - pPrev.z;
+      const len = Math.hypot(tx, tz) || 1;
+      tx /= len; tz /= len;
+      const nx = -tz, nz = tx;
+      const t = i / (pts.length - 1);
+      const half = 0.14 + 0.14 * Math.pow(t, 1.15) + 0.045 * Math.sin(t * 9.0) + 0.10;
+      positions.push(p.x + nx * half, p.y + 0.002, p.z + nz * half);
+      positions.push(p.x - nx * half, p.y + 0.002, p.z - nz * half);
+      uvs.push(0, t, 1, t);
+    }
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = i * 2;
+      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uTime: waterUniforms.uTime, uNight: waterUniforms.uNight },
+      vertexShader: waterVertexShader,
+      fragmentShader: `
+        precision highp float;
+        uniform float uTime;
+        uniform float uNight;
+        varying vec2 vUv;
+        varying vec3 vWorld;
+        varying vec3 vNormalW;
+        void main(){
+          float fade = smoothstep(0.0, 0.16, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
+          float edge = smoothstep(0.0, 0.18, vUv.x) * smoothstep(1.0, 0.82, vUv.x);
+          float sheen = 0.5 + 0.5 * sin(vUv.y * 31.0 - uTime * 2.0);
+          vec3 col = mix(vec3(0.58, 0.72, 0.78), vec3(0.82, 0.90, 0.92), sheen * 0.35);
+          col += uNight * vec3(0.0, 0.012, 0.025);
+          float alpha = fade * edge * (0.35 + sheen * 0.12);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.DoubleSide,
+      toneMapped: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 3;
+    terrainGroup.add(mesh);
+  })();
+
 
   // glossy white highlights where the stream trips over small stones
   (function addRapids() {
