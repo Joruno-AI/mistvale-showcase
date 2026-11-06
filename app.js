@@ -2721,6 +2721,25 @@
     }
   })();
 
+
+  let tripoDeerTemplate = null;
+  let tripoDeerBaseHeight = 1;
+  const tripoDeerWaiters = [];
+  function addTripoDeerClone(x, z, targetHeight, yaw) {
+    const place = () => {
+      const holder = new THREE.Group();
+      const deer = tripoDeerTemplate.clone(true);
+      deer.scale.setScalar(targetHeight / tripoDeerBaseHeight);
+      holder.add(deer);
+      holder.position.set(x, heightAt(x, z) + 0.006, z);
+      holder.rotation.y = yaw;
+      holder.name = 'ready-deer';
+      addAnimalShadow(holder, targetHeight * 0.36, 0.22);
+      life.add(holder);
+    };
+    if (tripoDeerTemplate) place();
+    else tripoDeerWaiters.push(place);
+  }
   (function addTripoDeer() {
     if (!THREE.GLTFLoader) return;
     const loader = new THREE.GLTFLoader();
@@ -2749,6 +2768,13 @@
           mat.needsUpdate = true;
         }
       });
+      const templateScene = source.clone(true);
+      templateScene.position.set(-center.x, -baseY, -center.z);
+      tripoDeerTemplate = new THREE.Group();
+      tripoDeerTemplate.add(templateScene);
+      tripoDeerBaseHeight = Math.max(0.01, size.y);
+      while (tripoDeerWaiters.length) tripoDeerWaiters.shift()();
+
       const spot = DEER_SPOT;
       const scale = spot.height / Math.max(0.01, size.y);
       const clone = source.clone(true);
@@ -3804,30 +3830,8 @@
     return g;
   }
   const animalRigs = [];
-  {
-    const buck = makeDeer(1.18, true);
-    const path = { cx: 1.36, cz: 3.24, rx: 0.4, rz: 0.09 };
-    const a0 = 0.6;
-    const bx = path.cx + Math.cos(a0) * path.rx;
-    const bz = path.cz + Math.sin(a0) * path.rz;
-    buck.position.set(bx, heightAt(bx, bz) + 0.01, bz);
-    buck.rotation.y = Math.atan2(-Math.cos(a0) * path.rz, -Math.sin(a0) * path.rx);
-    buck.userData.path = path;
-    buck.userData.pathAngle = a0;
-    buck.userData.walkSpeed = 0.3;
-    buck.userData.stepFreq = 4.4;
-    buck.userData.baseGround = heightAt(bx, bz);
-    life.add(buck);
-    animalRigs.push({ obj: buck, type: 'deerWalk', phase: 0.4 });
-
-    const doe = makeDeer(1.02, false);
-    const dx = 2.34, dz = 2.92;
-    doe.position.set(dx, heightAt(dx, dz) + 0.01, dz);
-    doe.rotation.y = -2.42;
-    doe.userData.baseGround = heightAt(dx, dz);
-    life.add(doe);
-    animalRigs.push({ obj: doe, type: 'deerGraze', phase: 2.2 });
-  }
+  addTripoDeerClone(1.36, 3.24, 0.68, 2.82);
+  addTripoDeerClone(2.34, 2.92, 0.58, -2.42);
 
   function makeRabbit(scale) {
     const g = new THREE.Group();
@@ -3938,6 +3942,29 @@
     });
   }
 
+
+  {
+    const fernSpots = [
+      [-2.05, 1.75, 0.46, 0.4],
+      [2.42, 1.70, 0.44, 2.1],
+      [0.18, -0.42, 0.36, 1.2]
+    ];
+    loadReadyModel('assets/ready/fern.glb', '__FERN_B64__', gltf => {
+      const template = fitReadyTemplate(gltf.scene, 0.46, 'length');
+      for (const [x, z, target, yaw] of fernSpots) {
+        const holder = new THREE.Group();
+        const fern = template.clone(true);
+        fern.scale.multiplyScalar(target / 0.46);
+        fern.rotation.y = yaw;
+        holder.add(fern);
+        holder.position.set(x, heightAt(x, z) + 0.005, z);
+        holder.name = 'ready-fern';
+        addAnimalShadow(holder, 0.20, 0.16);
+        life.add(holder);
+      }
+    });
+  }
+
   const birdGroup = new THREE.Group();
   life.add(birdGroup);
   const birds = [];
@@ -4002,47 +4029,23 @@
   const lilyPads = [];
   const koi = [];
   (function addLakeLife() {
-    const padMat = new THREE.MeshStandardMaterial({
-      color: 0x5d7d47,
-      roughness: 0.82,
-      metalness: 0,
-      side: THREE.DoubleSide,
-      envMapIntensity: 0.25
-    });
-    const padGeo = new THREE.CircleGeometry(1, 22, 0.22, TAU - 0.55);
-    const pads = [
-      [0.52, 2.05, 0.20], [1.30, 2.48, 0.15], [0.82, 2.52, 0.12],
-      [1.68, 2.00, 0.16], [1.48, 2.66, 0.10], [0.35, 2.37, 0.12]
-    ];
-    for (let i = 0; i < pads.length; i++) {
-      const p = pads[i];
-      const mesh = new THREE.Mesh(padGeo, padMat);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.rotation.z = rand() * TAU;
-      mesh.position.set(LAKE.x - 0.6 + p[0], LAKE_LEVEL + 0.008 + i * 0.0004, LAKE.z - 0.5 + p[1]);
-      mesh.scale.setScalar(p[2]);
-      mesh.renderOrder = 4;
-      life.add(mesh);
-      lilyPads.push(mesh);
-    }
-    // a small lotus
-    const lotus = new THREE.Group();
-    const petalMat = clayMaterial('#e6c6c3', 0.8);
-    const centerMat = clayMaterial('#d8b15e', 0.8);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU;
-      const petal = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 5), petalMat);
-      petal.scale.set(0.036, 0.012, 0.018);
-      petal.position.set(Math.cos(a) * 0.032, 0.025, Math.sin(a) * 0.032);
-      petal.rotation.set(0, -a, 0.42);
-      lotus.add(petal);
-    }
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 5), centerMat);
-    core.position.y = 0.035;
-    lotus.add(core);
-    lotus.position.set(LAKE.x + 0.25, LAKE_LEVEL + 0.013, LAKE.z + 0.45);
-    life.add(lotus);
 
+    const padSpots = [
+      [0.52, 2.05, 0.24], [1.30, 2.48, 0.19], [0.82, 2.52, 0.17],
+      [1.68, 2.00, 0.20], [1.48, 2.66, 0.14], [0.35, 2.37, 0.16]
+    ];
+    for (let i = 0; i < padSpots.length; i++) {
+      const p = padSpots[i];
+      loadReadyModel('assets/ready/lily.glb', '__LILY_B64__', gltf => {
+        const holder = new THREE.Group();
+        const lily = fitReadyTemplate(gltf.scene, p[2], 'length');
+        lily.rotation.y = rand() * TAU;
+        holder.add(lily);
+        holder.position.set(LAKE.x - 0.6 + p[0], LAKE_LEVEL + 0.008 + i * 0.0004, LAKE.z - 0.5 + p[1]);
+        life.add(holder);
+        lilyPads.push(holder);
+      });
+    }
 
     for (let i = 0; i < 4; i++) {
       loadReadyModel('assets/ready/koi.glb', '__KOI_B64__', gltf => {
