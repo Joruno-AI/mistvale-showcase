@@ -849,7 +849,7 @@
 
   const terrainMat = new THREE.MeshLambertMaterial({
     vertexColors: true,
-    dithering: true
+    dithering: false
   });
 
   function buildTerrainGeometry() {
@@ -1042,7 +1042,7 @@
     envMapIntensity: 0.2,
     bumpMap: clayBumpTex,
     bumpScale: 0.11,
-    dithering: true
+    dithering: false
   });
   const baseMesh = new THREE.Mesh(buildIslandBase(), baseMat);
   baseMesh.castShadow = true;
@@ -2078,25 +2078,25 @@
   const treeCanopyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.78, metalness: 0, flatShading: false,
     vertexColors: true, envMapIntensity: 0.24,
-    bumpMap: clayBumpTex, bumpScale: 0.04, dithering: true
+    bumpMap: clayBumpTex, bumpScale: 0.04, dithering: false
   });
   const treeConiferMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.86, metalness: 0,
     vertexColors: true, envMapIntensity: 0.24,
-    bumpMap: clayBumpTex, bumpScale: 0.035, dithering: true
+    bumpMap: clayBumpTex, bumpScale: 0.035, dithering: false
   });
   const trunkMat = new THREE.MeshStandardMaterial({
     color: 0x5b4531, roughness: 0.96, metalness: 0,
-    map: null, bumpMap: clayBumpTex, bumpScale: 0.025, dithering: true
+    map: null, bumpMap: clayBumpTex, bumpScale: 0.025, dithering: false
   });
   const bushMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.9, metalness: 0,
-    envMapIntensity: 0.2, bumpMap: clayBumpTex, bumpScale: 0.03, dithering: true
+    envMapIntensity: 0.2, bumpMap: clayBumpTex, bumpScale: 0.03, dithering: false
   });
   const tuftMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.8, metalness: 0,
     vertexColors: true, envMapIntensity: 0.22,
-    bumpMap: clayBumpTex, bumpScale: 0.02, dithering: true
+    bumpMap: clayBumpTex, bumpScale: 0.02, dithering: false
   });
   addWind(treeCanopyMat, { strength: 0.006, yBias: 0.42, freq: 0.6, curl: 0.78, space: 0.11, phase: 0.3 });
   addWind(treeConiferMat, { strength: 0.0032, yBias: 0.5, freq: 0.72, curl: 0.82, space: 0.12, phase: 1.1 });
@@ -2325,7 +2325,7 @@
     geo.computeVertexNormals();
     const snowMat = new THREE.MeshStandardMaterial({
       color: 0xe4edf0, roughness: 0.9, metalness: 0,
-      envMapIntensity: 0.3, bumpMap: clayBumpTex, bumpScale: 0.02, dithering: true
+      envMapIntensity: 0.3, bumpMap: clayBumpTex, bumpScale: 0.02, dithering: false
     });
     const snowMatrices = [];
     for (const m of coniferMatrices) {
@@ -2362,7 +2362,7 @@
       envMapIntensity: 0.5,
       emissive: new THREE.Color('#17230f'),
       emissiveIntensity: 0.35,
-      dithering: true
+      dithering: false
     });
     addWind(leafMat, { strength: 0, yBias: 0, freq: 1, curl: 0.8, leaf: true, phase: 1.4 });
 
@@ -2857,7 +2857,7 @@
       envMapIntensity: 0.24,
       bumpMap: clayBumpTex,
       bumpScale: 0.012,
-      dithering: true
+      dithering: false
     });
     addWind(mat, { strength: 2.1, yBias: 0, freq: 2.15, curl: 0.76, phase: 0.4 });
     for (let i = 0; i < max * 3; i++) {
@@ -3005,7 +3005,7 @@
       const mat = new THREE.MeshStandardMaterial({
         color: 0xffffff, roughness: 0.77, metalness: 0,
         vertexColors: true, side: THREE.DoubleSide,
-        envMapIntensity: 0.4, dithering: true
+        envMapIntensity: 0.4, dithering: false
       });
       addWind(mat, { strength: 0.62, yBias: 0.02, freq: 1.5, curl: 0.82, space: 0.5, phase: v * 0.7 });
       variantsData.push({ geo, mat, matrices: [], colors: [] });
@@ -3114,7 +3114,7 @@
     const mat = new THREE.MeshStandardMaterial({
       color: 0xffffff, roughness: 0.86, metalness: 0,
       vertexColors: true, side: THREE.DoubleSide, envMapIntensity: 0.22,
-      dithering: true
+      dithering: false
     });
     addWind(mat, { strength: 0.4, yBias: 0.02, freq: 1.45, curl: 0.8, space: 0.48, phase: 2.1 });
     const matrices = [], colors2 = [];
@@ -3175,7 +3175,7 @@
     })();
     const rockMat = new THREE.MeshStandardMaterial({
       color: 0xffffff, roughness: 0.94, metalness: 0,
-      vertexColors: true, flatShading: false, envMapIntensity: 0.3, dithering: true
+      vertexColors: true, flatShading: false, envMapIntensity: 0.3, dithering: false
     });
     const matrices = [], colors = [];
     for (let i = 0; i < 160; i++) {
@@ -3590,7 +3590,7 @@
       roughness: roughness === undefined ? 0.9 : roughness,
       metalness: 0,
       envMapIntensity: 0.35,
-      dithering: true
+      dithering: false
     });
   }
 
@@ -4091,7 +4091,7 @@
     const reedMat = new THREE.MeshStandardMaterial({
       color: 0xffffff, roughness: 0.84, metalness: 0,
       vertexColors: true, side: THREE.DoubleSide,
-      envMapIntensity: 0.22, dithering: true
+      envMapIntensity: 0.22, dithering: false
     });
     addWind(reedMat, { strength: 0.48, yBias: 0.02, freq: 1.25, curl: 0.8, phase: 1.1 });
 
@@ -4129,7 +4129,7 @@
     const petalMat = new THREE.MeshStandardMaterial({
       color: 0xecc3c2, roughness: 0.84, metalness: 0,
       side: THREE.DoubleSide, transparent: true, opacity: 0.95,
-      envMapIntensity: 0.35, dithering: true
+      envMapIntensity: 0.35, dithering: false
     });
     for (let i = 0; i < 10; i++) {
       const petal = new THREE.Mesh(petalGeo, petalMat);
