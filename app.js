@@ -3965,64 +3965,33 @@
     });
   }
 
+
   const birdGroup = new THREE.Group();
   life.add(birdGroup);
   const birds = [];
-  (function addBirds() {
-    const birdMat = new THREE.MeshStandardMaterial({
-      color: 0xf0e7d8,
-      roughness: 0.86,
-      metalness: 0,
-      side: THREE.DoubleSide,
-      envMapIntensity: 0.4
-    });
-    const darkMat = clayMaterial('#5b4a3c', 0.9);
-    function makeBird() {
-      const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), birdMat);
-      body.scale.set(0.12, 0.025, 0.028);
-      g.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 8), birdMat);
-      head.position.set(0.10, 0.015, 0);
-      g.add(head);
-      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.10, 8), birdMat);
-      tail.position.set(-0.12, 0.005, 0);
-      tail.rotation.z = Math.PI / 2;
-      g.add(tail);
-      const wings = [];
-      for (const s of [-1, 1]) {
-        const pivot = new THREE.Group();
-        pivot.position.set(0.015, 0.01, s * 0.028);
-        const wing = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8), birdMat);
-        wing.scale.set(0.105, 0.006, 0.065);
-        wing.position.set(-0.01, 0, s * 0.06);
-        pivot.add(wing);
-        g.add(pivot);
-        wings.push(pivot);
+  (function addGulls() {
+    loadReadyModel('assets/ready/gull.glb', '__GULL_B64__', gltf => {
+      const template = fitReadyTemplate(gltf.scene, 0.42, 'length');
+      for (let i = 0; i < 7; i++) {
+        const holder = new THREE.Group();
+        const gull = template.clone(true);
+        gull.scale.multiplyScalar(randRange(0.82, 1.18));
+        gull.rotation.y = randRange(-0.15, 0.15);
+        holder.add(gull);
+        holder.name = 'ready-gull';
+        birdGroup.add(holder);
+        birds.push({
+          mesh: holder,
+          radius: randRange(1.15, 2.7),
+          height: randRange(4.5, 6.4),
+          speed: randRange(.26, .46) * (i % 2 ? 1 : -1),
+          phase: rand() * TAU,
+          centerX: randRange(-.7, .4),
+          centerZ: randRange(-1.2, .4),
+          wingSpeed: 0
+        });
       }
-      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.035, 4), darkMat);
-      beak.rotation.z = -Math.PI / 2;
-      beak.position.set(0.13, 0.014, 0);
-      g.add(beak);
-      g.userData.wings = wings;
-      setShadows(g);
-      return g;
-    }
-    for (let i = 0; i < 9; i++) {
-      const b = makeBird();
-      b.scale.setScalar(randRange(1.3, 1.9));
-      birdGroup.add(b);
-      birds.push({
-        mesh: b,
-        radius: randRange(1.1, 2.6),
-        height: randRange(4.55, 6.55),
-        speed: randRange(.3, .52) * (i % 2 ? 1 : -1),
-        phase: rand() * TAU,
-        centerX: randRange(-.7, .4),
-        centerZ: randRange(-1.2, .4),
-        wingSpeed: randRange(17, 25)
-      });
-    }
+    });
   })();
 
   // lily pads and koi
@@ -5252,9 +5221,11 @@
       bird.mesh.rotation.y = angleLerp(bird.mesh.rotation.y, Math.atan2(-vz, vx), 4.0, dt);
       bird.mesh.rotation.z = Math.sin(angle * 2.0 + bird.phase) * 0.18;
       bird.mesh.rotation.x = Math.sin(angle * 3.0 + bird.phase) * 0.06;
-      const flap = Math.sin(elapsed * bird.wingSpeed + bird.phase) * 0.92;
-      bird.mesh.userData.wings[0].rotation.x = flap;
-      bird.mesh.userData.wings[1].rotation.x = -flap;
+      if (bird.mesh.userData.wings) {
+        const flap = Math.sin(elapsed * bird.wingSpeed + bird.phase) * 0.92;
+        bird.mesh.userData.wings[0].rotation.x = flap;
+        bird.mesh.userData.wings[1].rotation.x = -flap;
+      }
     }
 
     // Koi: quicker, with a soft tail swish.
