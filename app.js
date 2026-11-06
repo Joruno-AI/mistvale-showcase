@@ -2509,7 +2509,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('assets/tripo/clay_tree_v1/resized.glb', onLoad, undefined, onError);
+      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/clay_tree_v1/resized.glb', onLoad, undefined, onError);
     }
   })();
 
@@ -2565,7 +2565,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('assets/tripo/conifer_v1/resized.glb', onLoad, undefined, onError);
+      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/conifer_v1/resized.glb', onLoad, undefined, onError);
     }
   })();
 
@@ -2631,7 +2631,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('assets/tripo/rock_v1/resized.glb', onLoad, undefined, onError);
+      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/rock_v1/resized.glb', onLoad, undefined, onError);
     }
   })();
 
@@ -2682,7 +2682,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('assets/tripo/autumn_v1/optimized.glb', onLoad, undefined, onError);
+      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/autumn_v1/optimized.glb', onLoad, undefined, onError);
     }
   })();
 
@@ -2740,7 +2740,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('assets/tripo/deer_v1/optimized.glb', onLoad, undefined, onError);
+      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/deer_v1/optimized.glb', onLoad, undefined, onError);
     }
   })();
 
@@ -2791,7 +2791,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('assets/tripo/crag_v1/optimized.glb', onLoad, undefined, onError);
+      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/crag_v1/optimized.glb', onLoad, undefined, onError);
     }
   })();
 
