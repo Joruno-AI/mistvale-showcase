@@ -11,13 +11,10 @@
   async function loadTripoAssetRanged(loader, url, onLoad, onError) {
     const CHUNK = 512 * 1024;
     try {
-      let total = 0;
-      let offset = 0;
-      let bytes = null;
+      let total = 0, offset = 0, bytes = null;
       while (total === 0 || offset < total) {
         const end = offset + CHUNK - 1;
-        let part = null;
-        let rangeTotal = 0;
+        let part = null, rangeTotal = 0;
         for (let attempt = 0; attempt < 4 && !part; attempt++) {
           try {
             const res = await fetch(url, { cache: 'no-store', headers: { Range: `bytes=${offset}-${end}` } });
@@ -34,14 +31,9 @@
         }
         if (!part) throw new Error('chunk failed at ' + offset);
         if (!rangeTotal) throw new Error('missing content-range');
-        if (!total) {
-          total = rangeTotal;
-          bytes = new Uint8Array(total);
-        } else if (rangeTotal !== total) {
-          throw new Error('range total changed');
-        }
-        bytes.set(part, offset);
-        offset += part.length;
+        if (!total) { total = rangeTotal; bytes = new Uint8Array(total); }
+        else if (rangeTotal !== total) throw new Error('range total changed');
+        bytes.set(part, offset); offset += part.length;
       }
       if (!bytes || offset !== total) throw new Error('incomplete body');
       loader.parse(bytes.buffer, '', onLoad, onError);
@@ -4391,7 +4383,7 @@
   // Petals that drift down through the cube, looping forever.
   const petalSprites = [];
   (function addPetalFall() {
-    const count = IS_MOBILE ? 10 : 16;
+    const count = 0;
     const palette = [0xf4d0c7, 0xf6e5d4, 0xe9b4bf, 0xfff1dc];
     for (let i = 0; i < count; i++) {
       const mat = new THREE.SpriteMaterial({
