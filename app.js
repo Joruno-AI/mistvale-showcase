@@ -7,8 +7,7 @@
 
   await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 40)));
 
-  // Public delivery: stream large GLBs as small same-origin ranges and retry each
-  // chunk independently. A single stalled connection can no longer lose a model.
+  // Stream the large GLBs as small same-origin ranges, retrying each chunk.
   async function loadTripoAssetRanged(loader, url, onLoad, onError) {
     const CHUNK = 512 * 1024;
     try {
@@ -898,7 +897,7 @@
   });
 
   function buildTerrainGeometry() {
-    const segments = IS_MOBILE ? 200 : 316;
+    const segments = IS_MOBILE ? 260 : 420;
     const rings = IS_MOBILE ? 76 : 116;
     const positions = [];
     const colors = [];
@@ -3817,34 +3816,52 @@
     const coat = clayMaterial('#b5a28f', 0.94);
     const cream = clayMaterial('#e3d5c5', 0.94);
     const dark = clayMaterial('#55483d', 0.9);
-    const body = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), coat);
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 18), coat);
     body.scale.set(0.11, 0.105, 0.09);
     body.position.y = 0.11;
     g.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 9), coat);
+    for (const s of [-1, 1]) {
+      const haunch = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), coat);
+      haunch.scale.set(0.062, 0.072, 0.048);
+      haunch.position.set(-0.055, 0.09, s * 0.06);
+      g.add(haunch);
+      const hindFoot = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), cream);
+      hindFoot.scale.set(0.062, 0.022, 0.032);
+      hindFoot.position.set(-0.045, 0.025, s * 0.06);
+      g.add(hindFoot);
+      const foreleg = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.055, 4, 8), coat);
+      foreleg.position.set(0.065, 0.06, s * 0.036);
+      foreleg.rotation.z = -0.08;
+      g.add(foreleg);
+      const forepaw = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 7), cream);
+      forepaw.scale.set(0.028, 0.017, 0.024);
+      forepaw.position.set(0.075, 0.025, s * 0.036);
+      g.add(forepaw);
+    }
+    const head = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), coat);
     head.scale.set(0.075, 0.075, 0.068);
     head.position.set(0.085, 0.19, 0);
     g.add(head);
-    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), cream);
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), cream);
     muzzle.scale.set(0.045, 0.034, 0.036);
     muzzle.position.set(0.14, 0.17, 0);
     g.add(muzzle);
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.012, 5, 4), dark);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), dark);
     nose.position.set(0.18, 0.18, 0);
     g.add(nose);
     const ears = [];
     for (const s of [-1, 1]) {
-      const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.021, 0.115, 3, 6), coat);
+      const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.021, 0.115, 5, 12), coat);
       ear.position.set(0.055, 0.31, s * 0.038);
       ear.rotation.z = s * 0.1 - 0.08;
       ear.rotation.x = s * 0.16;
       g.add(ear);
       ears.push(ear);
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.009, 5, 4), dark);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.009, 8, 6), dark);
       eye.position.set(0.13, 0.205, s * 0.048);
       g.add(eye);
     }
-    const tail = new THREE.Mesh(new THREE.SphereGeometry(1, 7, 5), cream);
+    const tail = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), cream);
     tail.scale.set(.05, .05, .04);
     tail.position.set(-0.11, 0.12, 0);
     g.add(tail);
@@ -3885,13 +3902,13 @@
     const darkMat = clayMaterial('#5b4a3c', 0.9);
     function makeBird() {
       const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 9, 7), birdMat);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), birdMat);
       body.scale.set(0.12, 0.025, 0.028);
       g.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.022, 7, 5), birdMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 8), birdMat);
       head.position.set(0.10, 0.015, 0);
       g.add(head);
-      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.10, 4), birdMat);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.10, 8), birdMat);
       tail.position.set(-0.12, 0.005, 0);
       tail.rotation.z = Math.PI / 2;
       g.add(tail);
@@ -3899,7 +3916,7 @@
       for (const s of [-1, 1]) {
         const pivot = new THREE.Group();
         pivot.position.set(0.015, 0.01, s * 0.028);
-        const wing = new THREE.Mesh(new THREE.SphereGeometry(1, 7, 4), birdMat);
+        const wing = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8), birdMat);
         wing.scale.set(0.105, 0.006, 0.065);
         wing.position.set(-0.01, 0, s * 0.06);
         pivot.add(wing);
@@ -3983,13 +4000,25 @@
     ];
     for (let i = 0; i < 4; i++) {
       const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), koiMaterials[i % 3]);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), koiMaterials[i % 3]);
       body.scale.set(0.115, 0.032, 0.04);
       g.add(body);
-      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.11, 7), koiMaterials[i % 3]);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.11, 12), koiMaterials[i % 3]);
       tail.rotation.z = Math.PI / 2;
       tail.position.x = -0.10;
       g.add(tail);
+      for (const side of [-1, 1]) {
+        const fin = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), koiMaterials[i % 3]);
+        fin.scale.set(0.055, 0.006, 0.024);
+        fin.position.set(0.018, -0.006, side * 0.043);
+        fin.rotation.z = side * 0.32;
+        g.add(fin);
+      }
+      const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.07, 5), koiMaterials[i % 3]);
+      dorsal.rotation.z = Math.PI / 2;
+      dorsal.position.set(-0.015, 0.03, 0);
+      dorsal.scale.z = 0.35;
+      g.add(dorsal);
       g.position.set(LAKE.x - .35 + i * .22, LAKE_LEVEL - 0.09, LAKE.z - .18 + (i % 2) * .27);
       g.userData = { phase: rand() * TAU, speed: .48 + i * .09, radiusX: .25 + i * .05, radiusZ: .15 + (i % 2) * .06, cx: g.position.x, cz: g.position.z, tail, swimPhase: rand() * TAU };
       life.add(g);
