@@ -7,6 +7,44 @@
 
   await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 40)));
 
+  // Public delivery: read the large GLBs in small same-origin ranges. This avoids
+  // single-connection stalls and lets us retry a chunk without failing the model.
+  async function loadTripoAssetRanged(loader, url, onLoad, onError) {
+    const CHUNK = 512 * 1024;
+    try {
+      const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      const total = Number(head.headers.get('content-length')) || 0;
+      if (!total) throw new Error('no content-length');
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      while (offset < total) {
+        const end = Math.min(total - 1, offset + CHUNK - 1);
+        let part = null;
+        for (let attempt = 0; attempt < 4 && !part; attempt++) {
+          try {
+            const res = await fetch(url, { cache: 'no-store', headers: { Range: `bytes=${offset}-${end}` } });
+            if (res.status !== 206) throw new Error('range status ' + res.status);
+            const arr = new Uint8Array(await res.arrayBuffer());
+            if (!arr.length) throw new Error('empty chunk');
+            part = arr;
+          } catch (err) {
+            await new Promise(resolve => setTimeout(resolve, 300 + attempt * 650));
+          }
+        }
+        if (!part) throw new Error('chunk failed at ' + offset);
+        bytes.set(part, offset);
+        offset += part.length;
+      }
+      loader.parse(bytes.buffer, '', (gltf) => {
+        console.info('[MISTVALE_RANGE_OK]', url.split('/').slice(-2)[0]);
+        onLoad(gltf);
+      }, onError);
+    } catch (err) {
+      console.warn('[Mistvale] ranged load fallback', url, err);
+      loader.load(url, onLoad, undefined, onError);
+    }
+  }
+
   const TAU = Math.PI * 2;
   const canvas = document.getElementById('world');
   const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -2509,7 +2547,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/clay_tree_v1/resized.glb', onLoad, undefined, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/clay_tree_v1/resized.glb', onLoad, onError);
     }
   })();
 
@@ -2565,7 +2603,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/conifer_v1/resized.glb', onLoad, undefined, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/conifer_v1/resized.glb', onLoad, onError);
     }
   })();
 
@@ -2631,7 +2669,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/rock_v1/resized.glb', onLoad, undefined, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/rock_v1/resized.glb', onLoad, onError);
     }
   })();
 
@@ -2682,7 +2720,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/autumn_v1/optimized.glb', onLoad, undefined, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/autumn_v1/optimized.glb', onLoad, onError);
     }
   })();
 
@@ -2740,7 +2778,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/deer_v1/optimized.glb', onLoad, undefined, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/deer_v1/optimized.glb', onLoad, onError);
     }
   })();
 
@@ -2791,7 +2829,7 @@
         loader.parse(bytes.buffer, '', onLoad, onError);
       } catch (err) { onError(err); }
     } else {
-      loader.load('https://cdn.jsdelivr.net/gh/Joruno-AI/mistvale-showcase@main/assets/tripo/crag_v1/optimized.glb', onLoad, undefined, onError);
+      loadTripoAssetRanged(loader, 'assets/tripo/crag_v1/optimized.glb', onLoad, onError);
     }
   })();
 
