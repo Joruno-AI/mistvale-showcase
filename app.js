@@ -7,7 +7,6 @@
 
   await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 40)));
 
-  // Stream the large GLBs as small same-origin ranges, retrying each chunk.
   async function loadTripoAssetRanged(loader, url, onLoad, onError) {
     const CHUNK = 512 * 1024;
     try {
@@ -3662,6 +3661,33 @@
     return shadow;
   }
 
+
+  const readyLoader = new THREE.GLTFLoader();
+  if (window.MeshoptDecoder) readyLoader.setMeshoptDecoder(window.MeshoptDecoder);
+  function loadReadyModel(url, base64Key, onLoad) {
+    const onError = err => console.warn('[Mistvale] ready asset failed', url, err);
+    if (window[base64Key]) {
+      const raw = atob(window[base64Key]);
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+      readyLoader.parse(bytes.buffer, '', onLoad, onError);
+      return;
+    }
+    loadTripoAssetRanged(readyLoader, url, onLoad, onError);
+  }
+  function fitReadyTemplate(scene, targetSize, axis = 'y') {
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    scene.position.sub(center);
+    const reference = axis === 'y' ? size.y : Math.max(size.x, size.z);
+    const scale = targetSize / Math.max(0.0001, reference);
+    const wrapper = new THREE.Group();
+    wrapper.add(scene);
+    wrapper.scale.setScalar(scale);
+    return wrapper;
+  }
   const deerFur = clayMaterial('#b78c68', 0.93);
   const deerCream = clayMaterial('#e1cbb2', 0.94);
   const deerDark = clayMaterial('#4b3a2d', 0.9);
@@ -3864,20 +3890,52 @@
     return g;
   }
 
+
   {
-    const rabbitSpots = [[-1.32, 2.55, 0.88], [-1.58, 2.18, 0.78], [2.92, 3.10, 0.7]];
-    for (let i = 0; i < rabbitSpots.length; i++) {
-      const p = rabbitSpots[i];
-      const r = makeRabbit(p[2]);
-      const y = heightAt(p[0], p[1]);
-      r.position.set(p[0], y + 0.01, p[1]);
-      r.rotation.y = randRange(-3, 3);
-      r.userData.baseY = y;
-      r.userData.baseX = p[0];
-      r.userData.baseZ = p[1];
-      life.add(r);
-      animalRigs.push({ obj: r, type: 'rabbit', angle: rand() * TAU, speed: randRange(.7, 1.2), amount: 0.35 });
-    }
+    const rabbitSpots = [
+      [-1.55, 1.55, 0.65, 0.38],
+      [-0.25, 1.85, 2.15, 0.34],
+      [2.84, 3.02, -1.15, 0.35]
+    ];
+    loadReadyModel('assets/ready/cottontail_rabbit.glb', '__RABBIT_B64__', gltf => {
+      const template = fitReadyTemplate(gltf.scene, 0.31, 'y');
+      for (const [x, z, yaw, target] of rabbitSpots) {
+        const holder = new THREE.Group();
+        const rabbit = template.clone(true);
+        rabbit.scale.multiplyScalar(target / 0.31);
+        holder.add(rabbit);
+        holder.position.set(x, heightAt(x, z) + 0.008, z);
+        holder.rotation.y = yaw;
+        holder.name = 'ready-rabbit';
+        holder.userData = { baseY: holder.position.y, phase: rand() * TAU };
+        addAnimalShadow(holder, 0.17, 0.24);
+        life.add(holder);
+      }
+    });
+  }
+
+
+  {
+    const sparrowSpots = [
+      [-1.32, 1.02, 2.15, 0.15],
+      [-0.08, 1.02, -0.7, 0.14],
+      [2.56, 1.18, 1.35, 0.13]
+    ];
+    loadReadyModel('assets/ready/sparrow.glb', '__SPARROW_B64__', gltf => {
+      const template = fitReadyTemplate(gltf.scene, 0.11, 'y');
+      for (const [x, z, yaw, target] of sparrowSpots) {
+        const holder = new THREE.Group();
+        const bird = template.clone(true);
+        bird.scale.multiplyScalar(target / 0.11);
+        holder.add(bird);
+        holder.position.set(x, heightAt(x, z) + 0.008, z);
+        holder.rotation.y = yaw;
+        holder.name = 'ready-sparrow';
+        holder.userData = { phase: rand() * TAU };
+        addAnimalShadow(holder, 0.075, 0.2);
+        life.add(holder);
+      }
+    });
   }
 
   const birdGroup = new THREE.Group();
@@ -3985,36 +4043,35 @@
     lotus.position.set(LAKE.x + 0.25, LAKE_LEVEL + 0.013, LAKE.z + 0.45);
     life.add(lotus);
 
-    const koiMaterials = [
-      clayMaterial('#c67d4b', 0.58),
-      clayMaterial('#ded1b3', 0.6),
-      clayMaterial('#b7563e', 0.58)
-    ];
+
     for (let i = 0; i < 4; i++) {
-      const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), koiMaterials[i % 3]);
-      body.scale.set(0.115, 0.032, 0.04);
-      g.add(body);
-      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.11, 12), koiMaterials[i % 3]);
-      tail.rotation.z = Math.PI / 2;
-      tail.position.x = -0.10;
-      g.add(tail);
-      for (const side of [-1, 1]) {
-        const fin = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), koiMaterials[i % 3]);
-        fin.scale.set(0.055, 0.006, 0.024);
-        fin.position.set(0.018, -0.006, side * 0.043);
-        fin.rotation.z = side * 0.32;
-        g.add(fin);
-      }
-      const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.07, 5), koiMaterials[i % 3]);
-      dorsal.rotation.z = Math.PI / 2;
-      dorsal.position.set(-0.015, 0.03, 0);
-      dorsal.scale.z = 0.35;
-      g.add(dorsal);
-      g.position.set(LAKE.x - .35 + i * .22, LAKE_LEVEL - 0.09, LAKE.z - .18 + (i % 2) * .27);
-      g.userData = { phase: rand() * TAU, speed: .48 + i * .09, radiusX: .25 + i * .05, radiusZ: .15 + (i % 2) * .06, cx: g.position.x, cz: g.position.z, tail, swimPhase: rand() * TAU };
-      life.add(g);
-      koi.push(g);
+      loadReadyModel('assets/ready/koi.glb', '__KOI_B64__', gltf => {
+        const template = fitReadyTemplate(gltf.scene, 0.30, 'length');
+        const fish = new THREE.Group();
+        fish.add(template);
+        const cx = LAKE.x - .30 + i * .21;
+        const cz = LAKE.z - .16 + (i % 2) * .25;
+        fish.position.set(cx, LAKE_LEVEL - 0.075, cz);
+        fish.name = 'ready-koi';
+        fish.userData = {
+          phase: rand() * TAU,
+          speed: .42 + i * .07,
+          radiusX: .22 + i * .045,
+          radiusZ: .13 + (i % 2) * .05,
+          cx, cz,
+          mixer: null
+        };
+        if (gltf.animations && gltf.animations.length) {
+          const clip = gltf.animations.find(c => /Swimming_Normal/i.test(c.name)) || gltf.animations[0];
+          const mixer = new THREE.AnimationMixer(gltf.scene);
+          const action = mixer.clipAction(clip);
+          action.setLoop(THREE.LoopRepeat);
+          action.play();
+          fish.userData.mixer = mixer;
+        }
+        life.add(fish);
+        koi.push(fish);
+      });
     }
   })();
 
@@ -5206,10 +5263,7 @@
       fish.position.z = u.cz + Math.sin(a) * u.radiusZ;
       fish.rotation.y = -a + Math.PI * 0.5;
       fish.position.y = LAKE_LEVEL - 0.058 + Math.sin(a * 2.1) * 0.008;
-      if (u.tail) {
-        u.tail.rotation.y = Math.sin(elapsed * 7.5 + u.swimPhase) * 0.3;
-        u.tail.rotation.z = Math.sin(elapsed * 6.0 + u.swimPhase) * 0.12;
-      }
+      if (u.mixer) u.mixer.update(dt);
       fish.rotation.z = Math.sin(a * 2.0) * 0.06;
     }
 
