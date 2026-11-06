@@ -2161,6 +2161,7 @@
   const AUTUMN_TREE_SPOT = { x: 2.86, z: -0.26, s: 1.26, yaw: 4.15 };
   // A detailed doe grazes at the open right shore.
   const DEER_SPOT = { x: -0.78, z: 1.28, height: 0.72, yaw: 2.55 };
+  const originalDeerIdle = { obj: null, baseY: 0, baseYaw: 0, phase: rand() * TAU };
   const DEER_CLEARING_R = 0.95;
   function inDeerClearing(x, z) {
     return Math.hypot(x - DEER_SPOT.x, z - DEER_SPOT.z) < DEER_CLEARING_R;
@@ -2788,6 +2789,9 @@
       wrap.position.set(spot.x - center.x * scale, gh - baseY * scale - 0.025, spot.z - center.z * scale);
       wrap.updateMatrixWorld(true);
       details.add(wrap);
+      originalDeerIdle.obj = wrap;
+      originalDeerIdle.baseY = wrap.position.y;
+      originalDeerIdle.baseYaw = wrap.rotation.y;
       const sh = new THREE.Mesh(shadowGeo, shadowMat);
       sh.position.set(spot.x, gh + 0.027, spot.z);
       sh.scale.set(Math.max(size.x, size.z) * scale * 1.3, 1, Math.max(size.x, size.z) * scale * 1.1);
@@ -5239,8 +5243,14 @@
     }
     for (let i = 0; i < readyDeerIdle.length; i++) {
       const d = readyDeerIdle[i];
-      d.scale.y = 1 + Math.sin(elapsed * 0.9 + d.userData.phase) * 0.004;
-      d.rotation.y = d.userData.baseYaw + Math.sin(elapsed * 0.36 + d.userData.phase) * 0.014;
+      d.scale.y = 1 + Math.sin(elapsed * 0.9 + d.userData.phase) * 0.005;
+      d.position.y = d.userData.baseY + Math.sin(elapsed * 1.05 + d.userData.phase) * 0.004;
+      d.rotation.y = d.userData.baseYaw + Math.sin(elapsed * 0.36 + d.userData.phase) * 0.03;
+    }
+    if (originalDeerIdle.obj) {
+      const d = originalDeerIdle.obj;
+      d.position.y = originalDeerIdle.baseY + Math.sin(elapsed * 1.05 + originalDeerIdle.phase) * 0.0035;
+      d.rotation.y = originalDeerIdle.baseYaw + Math.sin(elapsed * 0.33 + originalDeerIdle.phase) * 0.025;
     }
 
     // Birds circle the mountain with visible wingbeats.
