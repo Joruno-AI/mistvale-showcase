@@ -4170,11 +4170,11 @@
 
     for (let i = 0; i < 4; i++) {
       loadReadyModel('assets/ready/koi.glb', '__KOI_B64__', gltf => {
-        const template = fitRiggedCentered(gltf.scene, 0.42);
+        const template = fitRiggedCentered(gltf.scene, 0.48);
         const fish = new THREE.Group();
         fish.add(template);
         const cx = LAKE.x - .34 + i * .22;
-        const cz = LAKE.z - .34 + (i % 2) * .18;
+        const cz = LAKE.z - .68 + (i % 2) * .16;
         fish.position.set(cx, LAKE_LEVEL + 0.085, cz);
         fish.name = 'ready-koi';
         fish.userData = {
