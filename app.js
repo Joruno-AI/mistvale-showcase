@@ -1470,12 +1470,12 @@
         float streak2 = sin(vUv.y * 127.0 - uTime * 51.0 + vUv.x * 12.0) * 0.5 + 0.5;
         float streak3 = sin(vUv.y * 214.0 - uTime * 84.0 + vUv.x * 28.0 + sin(vUv.y * 17.0 + uTime) * 0.8) * 0.5 + 0.5;
         float chunks = smoothstep(0.55, 0.92, sin(vUv.y * 21.0 - uTime * 9.2 + vUv.x * 4.0 + sin(vUv.x * 8.0 + uTime * 0.5) * 1.5) * 0.5 + 0.5);
-        vec3 col = mix(vec3(0.23, 0.46, 0.49), vec3(0.9, 0.98, 0.95), streak * 0.62 + streak2 * 0.22 + streak3 * 0.1 + chunks * 0.18);
+        vec3 col = mix(vec3(0.32, 0.50, 0.60), vec3(0.94, 0.98, 1.0), streak * 0.62 + streak2 * 0.22 + streak3 * 0.1 + chunks * 0.18);
         col += vec3(0.98, 0.94, 0.82) * pow(streak2, 4.0) * (0.4 + uGolden * 0.25);
         col += vec3(0.88, 0.97, 0.96) * pow(streak3, 6.0) * 0.35;
-        col *= 0.85 + uDay * 0.2;
-        col += uNight * vec3(0.0, 0.03, 0.055);
-        float bottomFade = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+        col *= 0.88 + uDay * 0.16;
+        col += uNight * vec3(0.0, 0.02, 0.04);
+        float bottomFade = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.78, vUv.y);
         float alpha = edge * (0.58 + streak * 0.26 + streak2 * 0.16 + streak3 * 0.08 + chunks * 0.18) * bottomFade;
         gl_FragColor = vec4(col, alpha);
       }
@@ -1499,7 +1499,88 @@
   fallGlowMesh.scale.set(1.8, 1.0, 1.02);
   fallGlowMesh.position.z = -0.02;
   fallGlowMesh.renderOrder = 4;
+  fallGlowMesh.visible = false;
   terrainGroup.add(fallGlowMesh);
+
+
+  // Snow/ice lip and a small source stream so the fall grows out of the glacier.
+  {
+    const topX = RIVER_LEDGE.x;
+    const topZ = RIVER_LEDGE.z + 0.02;
+    const topY = heightAt(topX, topZ) + 0.03;
+    const snowLipMat = new THREE.MeshStandardMaterial({
+      color: 0xe8f0ea, roughness: 0.92, metalness: 0,
+      envMapIntensity: 0.3
+    });
+    const lipGeo = new THREE.SphereGeometry(1, 22, 14);
+    const lips = [
+      [-0.32, 0.05, 0.02, 0.34, 0.085, 0.26],
+      [0.32, 0.05, 0.02, 0.34, 0.085, 0.26],
+      [0.0, 0.075, -0.20, 0.50, 0.075, 0.20],
+      [0.0, 0.085, 0.10, 0.42, 0.07, 0.24],
+      [-0.20, 0.03, 0.08, 0.21, 0.06, 0.17],
+      [0.20, 0.03, 0.08, 0.21, 0.06, 0.17]
+    ];
+    for (const [dx, dy, dz, sx, sy, sz] of lips) {
+      const m = new THREE.Mesh(lipGeo, snowLipMat);
+      m.position.set(topX + dx, topY + dy, topZ + dz);
+      m.scale.set(sx, sy, sz);
+      m.renderOrder = 6;
+      terrainGroup.add(m);
+    }
+    const cap = new THREE.Mesh(lipGeo, snowLipMat);
+    cap.position.set(topX, topY + 0.015, topZ + 0.21);
+    cap.scale.set(0.30, 0.055, 0.13);
+    cap.renderOrder = 7;
+    terrainGroup.add(cap);
+    const capL = new THREE.Mesh(lipGeo, snowLipMat);
+    capL.position.set(topX - 0.22, topY + 0.005, topZ + 0.12);
+    capL.scale.set(0.13, 0.06, 0.15);
+    capL.renderOrder = 7;
+    terrainGroup.add(capL);
+    const capR = new THREE.Mesh(lipGeo, snowLipMat);
+    capR.position.set(topX + 0.22, topY + 0.005, topZ + 0.12);
+    capR.scale.set(0.13, 0.06, 0.15);
+    capR.renderOrder = 7;
+    terrainGroup.add(capR);
+
+    // A short ribbon of water on the glacier feeding the lip.
+    const src = [];
+    for (let i = 0; i < 10; i++) {
+      const t = i / 9;
+      const z = topZ - 0.34 + t * 0.34;
+      const x = topX - 0.055 + Math.sin(t * Math.PI) * 0.025;
+      src.push({ x, z, y: heightAt(x, z) + 0.028, w: 0.11 + t * 0.035 });
+    }
+    const positions = [], uvs = [], indices = [];
+    for (let i = 0; i < src.length; i++) {
+      const p = src[i];
+      positions.push(p.x - p.w, p.y, p.z, p.x + p.w, p.y, p.z);
+      uvs.push(0, i / (src.length - 1), 1, i / (src.length - 1));
+    }
+    for (let i = 0; i < src.length - 1; i++) {
+      const a = i * 2;
+      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+    const sourceGeo = new THREE.BufferGeometry();
+    sourceGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    sourceGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    sourceGeo.setIndex(indices);
+    const sourceMesh = new THREE.Mesh(sourceGeo, fallMat);
+    sourceMesh.renderOrder = 5;
+    terrainGroup.add(sourceMesh);
+
+    // Foam collar where the fall meets the lake.
+    const foamMat = new THREE.MeshBasicMaterial({
+      color: 0xd9f2f2, transparent: true, opacity: 0.32, depthWrite: false,
+      side: THREE.DoubleSide, toneMapped: false
+    });
+    const foam = new THREE.Mesh(new THREE.RingGeometry(0.20, 0.37, 32), foamMat);
+    foam.rotation.x = -Math.PI / 2;
+    foam.position.set(topX + 0.02, LAKE_LEVEL + 0.024, LAKE.z - LAKE.rz * 0.73);
+    foam.renderOrder = 3;
+    terrainGroup.add(foam);
+  }
 
   // waterfall mist and foam
   const fallMistSprites = [];
@@ -2142,26 +2223,20 @@
   // Two exceptionally detailed hero trees generated with Tripo replace the old
   // procedural silhouettes at these matching spots.
   const HERO_TREE_SPOTS = [
-    { x: -2.62, z: 2.58, s: 1.46, yaw: 0.35 },
-    { x: 3.02, z: 0.66, s: 1.34, yaw: 1.55 },
-    { x: 2.86, z: -0.26, s: 1.26, yaw: 4.15 },
-    { x: -2.34, z: -2.30, s: 1.14, yaw: 2.55 }
+    { x: -2.22, z: 2.25, s: 1.46, yaw: 0.35 },
+    { x: 2.15, z: 1.45, s: 1.34, yaw: 1.55 },
+    { x: -1.65, z: 1.20, s: 1.14, yaw: 2.55 }
   ];
-  const CONIFER_SPOTS = [
-    { x: 1.84, z: -2.72, yaw: 0.60, scale: 1.00 },
-    { x: 0.98, z: -2.58, yaw: 2.20, scale: 0.86 },
-    { x: -0.44, z: -2.82, yaw: 1.30, scale: 0.74 }
-  ];
+  const CONIFER_SPOTS = [];
   const ROCK_SPOTS = [
-    { x: -0.55, z: 2.95, height: 0.55, yaw: 0.80 },
+    { x: -0.55, z: 2.65, height: 0.55, yaw: 0.80 },
     { x: 2.35, z: 2.18, height: 0.58, yaw: 2.35 },
     { x: -1.72, z: 1.28, height: 0.42, yaw: 3.80 }
   ];
   // The old green tree at this spot becomes an autumn maple instead.
-  const AUTUMN_TREE_SPOT = { x: 2.86, z: -0.26, s: 1.26, yaw: 4.15 };
+  const AUTUMN_TREE_SPOT = { x: -1.20, z: 2.40, s: 1.26, yaw: 4.15 };
   // A detailed doe grazes at the open right shore.
   const DEER_SPOT = { x: -0.78, z: 1.28, height: 0.72, yaw: 2.55 };
-  const originalDeerIdle = { obj: null, baseY: 0, baseYaw: 0, phase: rand() * TAU };
   const DEER_CLEARING_R = 0.95;
   function inDeerClearing(x, z) {
     return Math.hypot(x - DEER_SPOT.x, z - DEER_SPOT.z) < DEER_CLEARING_R;
@@ -2239,8 +2314,11 @@
         const z = c.z + Math.sin(a) * rad;
         if (HERO_TREE_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < p.s * 0.62)) continue;
         if (CONIFER_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < 0.62)) continue;
-        const isConifer = c.type === 'conifer' || (heightAt(x, z) > 2.5 && rand() < 0.35);
+        if (c.type === 'conifer') continue;
+        const isConifer = false;
         if (lakeQ(x, z) < (isConifer ? 1.7 : 2.02)) continue;
+        if (heightAt(x, z) > 1.45) continue;
+        if (Math.hypot(x - RIVER_LEDGE.x, z - RIVER_LEDGE.z) < 1.10 && heightAt(x, z) > 1.55) continue;
         if (z > 0.55 && x > -1.55 && x < 2.25) continue;
         if (z > 2.05 && x < 2.65) continue;
         if (!canPlace(x, z, {
@@ -2249,7 +2327,7 @@
           river: 0.55,
           slope: isConifer ? 1.38 : 1.08,
           minH: 0.55,
-          maxH: isConifer ? 2.95 : 2.55
+          maxH: isConifer ? 1.50 : 1.35
         })) continue;
         if (rand() < 0.12) continue;
         const s = (isConifer ? randRange(0.52, 0.86) : randRange(0.38, 0.78)) * (accepted > c.n * 0.6 ? 0.9 : 1.0);
@@ -2270,8 +2348,6 @@
       }
     }
 
-    // Deliberate silhouettes that frame the little valley rather than hide it.
-    addConifer(-2.82, -1.72, 0.8, new THREE.Color('#425f49'), 0.5);
 
     // Let the contact-shadow pass know about the hero trees too.
     for (const spot of HERO_TREE_SPOTS) {
@@ -2485,6 +2561,35 @@
   // Hero trees generated in Tripo Studio, loaded asynchronously into the same
   // clay world. The base is sunk slightly so the tree grows out of the meadow.
   // ---------------------------------------------------------------------------
+
+  function stripMeshBase(root, fraction = 0.065) {
+    root.traverse(o => {
+      if (!o.isMesh || !o.geometry) return;
+      const geo = o.geometry;
+      const pos = geo.attributes.position;
+      const idx = geo.index;
+      if (!pos || !idx) return;
+      let minY = Infinity, maxY = -Infinity;
+      for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); if (y < minY) minY = y; if (y > maxY) maxY = y; }
+      const cut = minY + (maxY - minY) * fraction;
+      const keep = [];
+      for (let i = 0; i < idx.count; i += 3) {
+        const a = idx.getX(i), b = idx.getX(i + 1), c = idx.getX(i + 2);
+        if ((pos.getY(a) + pos.getY(b) + pos.getY(c)) / 3 >= cut) keep.push(a, b, c);
+      }
+      geo.setIndex(keep);
+      geo.computeBoundingSphere();
+    });
+  }
+  function softenFoliageMaterial(mat) {
+    mat.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        '#include <color_fragment>\n        diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114))), diffuseColor.rgb, 0.58) * vec3(0.97, 1.0, 0.94);'
+      );
+    };
+    mat.needsUpdate = true;
+  }
   (function addTripoHeroTrees() {
     if (!THREE.GLTFLoader) {
       console.warn('[Mistvale] GLTFLoader missing; hero trees skipped');
@@ -2495,6 +2600,8 @@
 
     const onLoad = (gltf) => {
       const source = gltf.scene;
+      source.updateMatrixWorld(true);
+      stripMeshBase(source, 0.065);
       source.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(source);
       const center = box.getCenter(new THREE.Vector3());
@@ -2507,11 +2614,12 @@
         for (const mat of mats) {
           if (!mat) continue;
           mat.envMapIntensity = 0.55;
+          softenFoliageMaterial(mat);
           mat.needsUpdate = true;
         }
       });
       const heroSpots = (IS_MOBILE ? HERO_TREE_SPOTS.slice(0, 1) : HERO_TREE_SPOTS).filter(spot => Math.abs(spot.x - AUTUMN_TREE_SPOT.x) > 0.001 || Math.abs(spot.z - AUTUMN_TREE_SPOT.z) > 0.001);
-      const heroTints = [0xffffff, 0xf0f2d6, 0xf6ead8, 0xe7eddf];
+      const heroTints = [0xe9efdd, 0xdfe8d1, 0xf0eee1, 0xe5eddc];
       for (let heroIndex = 0; heroIndex < heroSpots.length; heroIndex++) {
         const spot = heroSpots[heroIndex];
         const clone = source.clone(true);
@@ -2558,6 +2666,8 @@
     if (window.MeshoptDecoder) loader.setMeshoptDecoder(window.MeshoptDecoder);
     const onLoad = (gltf) => {
       const source = gltf.scene;
+      source.updateMatrixWorld(true);
+      stripMeshBase(source, 0.055);
       source.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(source);
       const size = box.getSize(new THREE.Vector3());
@@ -2681,6 +2791,8 @@
     const onLoad = (gltf) => {
       const source = gltf.scene;
       source.updateMatrixWorld(true);
+      stripMeshBase(source, 0.065);
+      source.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(source);
       const center = box.getCenter(new THREE.Vector3());
       const baseY = box.min.y;
@@ -2692,6 +2804,7 @@
         for (const mat of mats) {
           if (!mat) continue;
           mat.envMapIntensity = 0.6;
+          softenFoliageMaterial(mat);
           mat.needsUpdate = true;
         }
       });
@@ -2722,94 +2835,6 @@
     }
   })();
 
-
-  let tripoDeerTemplate = null;
-  let tripoDeerBaseHeight = 1;
-  const tripoDeerWaiters = [];
-  function addTripoDeerClone(x, z, targetHeight, yaw) {
-    const place = () => {
-      const holder = new THREE.Group();
-      const deer = tripoDeerTemplate.clone(true);
-      deer.scale.setScalar(targetHeight / tripoDeerBaseHeight);
-      holder.add(deer);
-      holder.position.set(x, heightAt(x, z) + 0.006, z);
-      holder.rotation.y = yaw;
-      holder.name = 'ready-deer';
-      holder.userData = { baseY: holder.position.y, baseYaw: yaw, phase: rand() * TAU };
-      addAnimalShadow(holder, targetHeight * 0.36, 0.22);
-      life.add(holder);
-      readyDeerIdle.push(holder);
-    };
-    if (tripoDeerTemplate) place();
-    else tripoDeerWaiters.push(place);
-  }
-  (function addTripoDeer() {
-    if (!THREE.GLTFLoader) return;
-    const loader = new THREE.GLTFLoader();
-    if (window.MeshoptDecoder) loader.setMeshoptDecoder(window.MeshoptDecoder);
-    const shadowGeo = new THREE.PlaneGeometry(1, 1);
-    shadowGeo.rotateX(-Math.PI / 2);
-    const shadowMat = new THREE.MeshBasicMaterial({
-      map: softTex, color: 0x000000, transparent: true, opacity: 0.2,
-      depthWrite: false, blending: THREE.NormalBlending, toneMapped: false
-    });
-    const onLoad = (gltf) => {
-      const source = gltf.scene;
-      source.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(source);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const baseY = box.min.y;
-      source.traverse((o) => {
-        if (!o.isMesh) return;
-        o.castShadow = false;
-        o.receiveShadow = true;
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        for (const mat of mats) {
-          if (!mat) continue;
-          mat.envMapIntensity = 0.62;
-          mat.needsUpdate = true;
-        }
-      });
-      const templateScene = source.clone(true);
-      templateScene.position.set(-center.x, -baseY, -center.z);
-      tripoDeerTemplate = new THREE.Group();
-      tripoDeerTemplate.add(templateScene);
-      tripoDeerBaseHeight = Math.max(0.01, size.y);
-      while (tripoDeerWaiters.length) tripoDeerWaiters.shift()();
-
-      const spot = DEER_SPOT;
-      const scale = spot.height / Math.max(0.01, size.y);
-      const clone = source.clone(true);
-      const wrap = new THREE.Group();
-      wrap.add(clone);
-      wrap.scale.setScalar(scale);
-      wrap.rotation.y = spot.yaw;
-      const gh = heightAt(spot.x, spot.z);
-      wrap.position.set(spot.x - center.x * scale, gh - baseY * scale - 0.025, spot.z - center.z * scale);
-      wrap.updateMatrixWorld(true);
-      details.add(wrap);
-      originalDeerIdle.obj = wrap;
-      originalDeerIdle.baseY = wrap.position.y;
-      originalDeerIdle.baseYaw = wrap.rotation.y;
-      const sh = new THREE.Mesh(shadowGeo, shadowMat);
-      sh.position.set(spot.x, gh + 0.027, spot.z);
-      sh.scale.set(Math.max(size.x, size.z) * scale * 1.3, 1, Math.max(size.x, size.z) * scale * 1.1);
-      sh.renderOrder = 2;
-      details.add(sh);
-    };
-    const onError = (err) => console.warn('[Mistvale] deer load failed', err);
-    if (window.__DEER_B64__) {
-      try {
-        const raw = atob(window.__DEER_B64__);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-        loader.parse(bytes.buffer, '', onLoad, onError);
-      } catch (err) { onError(err); }
-    } else {
-      loadTripoAssetRanged(loader, 'assets/tripo/deer_v1/raw.glb', onLoad, onError);
-    }
-  })();
 
   (function addTripoCrags() {
     if (!THREE.GLTFLoader || IS_MOBILE) return;
@@ -3694,9 +3719,8 @@
   }
 
 
-  const readyRabbits = [];
-  const readySparrows = [];
-  const readyDeerIdle = [];
+  const grazingDeerRigs = [];
+  const walkingDeerRigs = [];
   const readyLoader = new THREE.GLTFLoader();
   if (window.MeshoptDecoder) readyLoader.setMeshoptDecoder(window.MeshoptDecoder);
   function loadReadyModel(url, base64Key, onLoad) {
@@ -3709,6 +3733,24 @@
       return;
     }
     loadTripoAssetRanged(readyLoader, url, onLoad, onError);
+  }
+
+  function fitRiggedReady(scene, targetHeight) {
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    scene.traverse(o => {
+      if (!o.isMesh || !o.geometry) return;
+      o.geometry.computeBoundingBox();
+      if (o.geometry.boundingBox) box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+    });
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    scene.position.sub(center);
+    const wrapper = new THREE.Group();
+    wrapper.add(scene);
+    wrapper.scale.setScalar(targetHeight / Math.max(0.001, size.y));
+    wrapper.position.y = targetHeight * 0.5;
+    return { wrapper, size, center };
   }
   function fitReadyTemplate(scene, targetSize, axis = 'y') {
     scene.updateMatrixWorld(true);
@@ -3838,9 +3880,42 @@
     addAnimalShadow(g, 0.3 * scale, 0.3);
     return g;
   }
+
   const animalRigs = [];
-  addTripoDeerClone(1.36, 3.24, 0.68, 2.82);
-  addTripoDeerClone(2.34, 2.92, 0.58, -2.42);
+  {
+    loadReadyModel('assets/ready/deer_q.glb', '__DEER_Q_B64__', gltf => {
+      const fitted = fitRiggedReady(gltf.scene, 0.76);
+      const holder = new THREE.Group();
+      holder.add(fitted.wrapper);
+      holder.position.set(-0.62, heightAt(-0.62, 1.55) + 0.006, 1.55);
+      holder.rotation.y = 2.75;
+      holder.name = 'ready-grazing-deer';
+      addAnimalShadow(holder, 0.23, 0.2);
+      life.add(holder);
+      const mixer = new THREE.AnimationMixer(gltf.scene);
+      const clip = gltf.animations.find(c => /Eating/i.test(c.name)) || gltf.animations[0];
+      const action = mixer.clipAction(clip);
+      action.setLoop(THREE.LoopRepeat);
+      action.play();
+      grazingDeerRigs.push({ obj: holder, mixer, phase: rand() * TAU });
+    });
+    loadReadyModel('assets/ready/stag_q.glb', '__STAG_Q_B64__', gltf => {
+      const fitted = fitRiggedReady(gltf.scene, 0.86);
+      const holder = new THREE.Group();
+      holder.add(fitted.wrapper);
+      holder.position.set(1.35, heightAt(1.35, 2.75) + 0.006, 2.75);
+      holder.name = 'ready-walking-deer';
+      addAnimalShadow(holder, 0.26, 0.2);
+      life.add(holder);
+      const mixer = new THREE.AnimationMixer(gltf.scene);
+      const clip = gltf.animations.find(c => /Walk/i.test(c.name)) || gltf.animations[0];
+      const action = mixer.clipAction(clip);
+      action.setLoop(THREE.LoopRepeat);
+      action.play();
+      walkingDeerRigs.push({ obj: holder, mixer, path: { cx: 1.35, cz: 2.75, rx: 0.34, rz: 0.13 }, angle: 0.4, speed: 0.16, phase: rand() * TAU });
+    });
+  }
+
 
   function makeRabbit(scale) {
     const g = new THREE.Group();
@@ -3901,79 +3976,6 @@
     setShadows(g);
     addAnimalShadow(g, 0.115 * scale, 0.26);
     return g;
-  }
-
-
-  {
-    const rabbitSpots = [
-      [-1.55, 1.55, 0.65, 0.38],
-      [-0.25, 1.85, 2.15, 0.34],
-      [2.84, 3.02, -1.15, 0.35]
-    ];
-    loadReadyModel('assets/ready/cottontail_rabbit.glb', '__RABBIT_B64__', gltf => {
-      const template = fitReadyTemplate(gltf.scene, 0.31, 'y');
-      for (const [x, z, yaw, target] of rabbitSpots) {
-        const holder = new THREE.Group();
-        const rabbit = template.clone(true);
-        rabbit.scale.multiplyScalar(target / 0.31);
-        holder.add(rabbit);
-        holder.position.set(x, heightAt(x, z) + 0.008, z);
-        holder.rotation.y = yaw;
-        holder.name = 'ready-rabbit';
-        holder.userData = { baseY: holder.position.y, phase: rand() * TAU };
-        addAnimalShadow(holder, 0.17, 0.24);
-        life.add(holder);
-        readyRabbits.push(holder);
-      }
-    });
-  }
-
-
-  {
-    const sparrowSpots = [
-      [-1.32, 1.02, 2.15, 0.15],
-      [-0.08, 1.02, -0.7, 0.14],
-      [2.56, 1.18, 1.35, 0.13]
-    ];
-    loadReadyModel('assets/ready/sparrow.glb', '__SPARROW_B64__', gltf => {
-      const template = fitReadyTemplate(gltf.scene, 0.11, 'y');
-      for (const [x, z, yaw, target] of sparrowSpots) {
-        const holder = new THREE.Group();
-        const bird = template.clone(true);
-        bird.scale.multiplyScalar(target / 0.11);
-        holder.add(bird);
-        holder.position.set(x, heightAt(x, z) + 0.008, z);
-        holder.rotation.y = yaw;
-        holder.name = 'ready-sparrow';
-        holder.userData = { baseY: holder.position.y, phase: rand() * TAU };
-        addAnimalShadow(holder, 0.075, 0.2);
-        life.add(holder);
-        readySparrows.push(holder);
-      }
-    });
-  }
-
-
-  {
-    const fernSpots = [
-      [-2.05, 1.75, 0.46, 0.4],
-      [2.42, 1.70, 0.44, 2.1],
-      [0.18, -0.42, 0.36, 1.2]
-    ];
-    loadReadyModel('assets/ready/fern.glb', '__FERN_B64__', gltf => {
-      const template = fitReadyTemplate(gltf.scene, 0.46, 'length');
-      for (const [x, z, target, yaw] of fernSpots) {
-        const holder = new THREE.Group();
-        const fern = template.clone(true);
-        fern.scale.multiplyScalar(target / 0.46);
-        fern.rotation.y = yaw;
-        holder.add(fern);
-        holder.position.set(x, heightAt(x, z) + 0.005, z);
-        holder.name = 'ready-fern';
-        addAnimalShadow(holder, 0.20, 0.16);
-        life.add(holder);
-      }
-    });
   }
 
 
@@ -4038,12 +4040,12 @@
 
     for (let i = 0; i < 4; i++) {
       loadReadyModel('assets/ready/koi.glb', '__KOI_B64__', gltf => {
-        const template = fitReadyTemplate(gltf.scene, 0.30, 'length');
+        const template = fitReadyTemplate(gltf.scene, 0.38, 'length');
         const fish = new THREE.Group();
         fish.add(template);
-        const cx = LAKE.x - .30 + i * .21;
-        const cz = LAKE.z - .16 + (i % 2) * .25;
-        fish.position.set(cx, LAKE_LEVEL - 0.075, cz);
+        const cx = LAKE.x - .34 + i * .22;
+        const cz = LAKE.z - .34 + (i % 2) * .18;
+        fish.position.set(cx, LAKE_LEVEL + 0.012, cz);
         fish.name = 'ready-koi';
         fish.userData = {
           phase: rand() * TAU,
@@ -4061,6 +4063,16 @@
           action.play();
           fish.userData.mixer = mixer;
         }
+        const rippleMat = new THREE.MeshBasicMaterial({
+          color: 0xcfe9ef, transparent: true, opacity: 0.30, depthWrite: false,
+          side: THREE.DoubleSide, blending: THREE.NormalBlending, toneMapped: false
+        });
+        const ripple = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.15, 28), rippleMat);
+        ripple.rotation.x = -Math.PI / 2;
+        ripple.position.set(cx, LAKE_LEVEL + 0.018, cz);
+        ripple.renderOrder = 3;
+        life.add(ripple);
+        fish.userData.ripple = ripple;
         life.add(fish);
         koi.push(fish);
       });
@@ -5228,29 +5240,22 @@
       }
     }
 
-    // Ready animals: small hops, breathing and pecking so the scene stays alive.
-    for (let i = 0; i < readyRabbits.length; i++) {
-      const r = readyRabbits[i];
-      const hop = Math.max(0, Math.sin(elapsed * 2.35 + r.userData.phase));
-      r.position.y = r.userData.baseY + Math.pow(hop, 1.7) * 0.045 + Math.sin(elapsed * 1.15 + r.userData.phase) * 0.003;
-      r.rotation.z = Math.sin(elapsed * 2.35 + r.userData.phase) * 0.045;
+    for (let i = 0; i < grazingDeerRigs.length; i++) {
+      const d = grazingDeerRigs[i];
+      if (d.mixer) d.mixer.update(dt);
+      const breathe = 1 + Math.sin(elapsed * 0.8 + d.phase) * 0.004;
+      d.obj.scale.set(1, breathe, 1);
     }
-    for (let i = 0; i < readySparrows.length; i++) {
-      const b = readySparrows[i];
-      const peck = Math.max(0, Math.sin(elapsed * 4.4 + b.userData.phase));
-      b.position.y = b.userData.baseY + Math.pow(peck, 2.0) * 0.016;
-      b.rotation.x = Math.sin(elapsed * 4.4 + b.userData.phase) * 0.09;
-    }
-    for (let i = 0; i < readyDeerIdle.length; i++) {
-      const d = readyDeerIdle[i];
-      d.scale.y = 1 + Math.sin(elapsed * 0.9 + d.userData.phase) * 0.005;
-      d.position.y = d.userData.baseY + Math.sin(elapsed * 1.05 + d.userData.phase) * 0.004;
-      d.rotation.y = d.userData.baseYaw + Math.sin(elapsed * 0.36 + d.userData.phase) * 0.03;
-    }
-    if (originalDeerIdle.obj) {
-      const d = originalDeerIdle.obj;
-      d.position.y = originalDeerIdle.baseY + Math.sin(elapsed * 1.05 + originalDeerIdle.phase) * 0.0035;
-      d.rotation.y = originalDeerIdle.baseYaw + Math.sin(elapsed * 0.33 + originalDeerIdle.phase) * 0.025;
+    for (let i = 0; i < walkingDeerRigs.length; i++) {
+      const d = walkingDeerRigs[i];
+      d.angle += dt * d.speed;
+      const x = d.path.cx + Math.cos(d.angle) * d.path.rx;
+      const z = d.path.cz + Math.sin(d.angle) * d.path.rz;
+      d.obj.position.set(x, heightAt(x, z) + 0.006, z);
+      const vx = -Math.sin(d.angle) * d.path.rx;
+      const vz = Math.cos(d.angle) * d.path.rz;
+      d.obj.rotation.y = angleLerp(d.obj.rotation.y, Math.atan2(vx, vz), 2.0, dt);
+      if (d.mixer) d.mixer.update(dt);
     }
 
     // Birds circle the mountain with visible wingbeats.
@@ -5277,8 +5282,14 @@
       fish.position.x = u.cx + Math.cos(a) * u.radiusX;
       fish.position.z = u.cz + Math.sin(a) * u.radiusZ;
       fish.rotation.y = -a + Math.PI * 0.5;
-      fish.position.y = LAKE_LEVEL - 0.058 + Math.sin(a * 2.1) * 0.008;
+      fish.position.y = LAKE_LEVEL + 0.012 + Math.sin(a * 2.1) * 0.006;
       if (u.mixer) u.mixer.update(dt);
+      if (u.ripple) {
+        u.ripple.position.x = fish.position.x;
+        u.ripple.position.z = fish.position.z;
+        u.ripple.scale.setScalar(0.82 + Math.sin(elapsed * 1.8 + u.phase) * 0.16);
+        u.ripple.material.opacity = 0.18 + Math.max(0, Math.sin(elapsed * 1.8 + u.phase)) * 0.22;
+      }
       fish.rotation.z = Math.sin(a * 2.0) * 0.06;
     }
 
